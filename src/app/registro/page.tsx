@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { PhoneInput, PinInput } from "@/components/PinInput";
+import { AuthTabs } from "@/components/AuthTabs";
 import { ErrorText, Logo, Spinner } from "@/components/ui";
 
 function RegistroForm() {
@@ -12,7 +13,8 @@ function RegistroForm() {
   const next = params.get("next");
   const [step, setStep] = useState<"datos" | "pin" | "confirmar">("datos");
   const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
+  // Si vienen desde un intento fallido de ingreso, el celular ya viene escrito.
+  const [phone, setPhone] = useState(() => (/^9\d{8}$/.test(params.get("tel") ?? "") ? (params.get("tel") as string) : ""));
   const [pin, setPin] = useState("");
   const [pin2, setPin2] = useState("");
   const [error, setError] = useState("");
@@ -62,6 +64,7 @@ function RegistroForm() {
         <Logo />
       </Link>
       <div className="card mt-8 w-full max-w-md p-6">
+        {step === "datos" && <AuthTabs active="registro" next={next} />}
         <p className="text-sm font-semibold text-agua-700">
           Paso {step === "datos" ? 1 : step === "pin" ? 2 : 3} de 3
         </p>

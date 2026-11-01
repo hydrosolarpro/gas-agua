@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { PhoneInput, PinInput } from "@/components/PinInput";
+import { AuthTabs } from "@/components/AuthTabs";
 import { ErrorText, Logo, Spinner } from "@/components/ui";
 import { safePath } from "@/lib/safe-path";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -68,6 +69,7 @@ function IngresarForm() {
         <Logo />
       </Link>
       <div className="card mt-8 w-full max-w-md p-6">
+        <AuthTabs active="ingresar" next={params.get("next")} />
         <h1 className="text-2xl font-extrabold">¡Hola!</h1>
         <p className="mt-1 text-slate-600">Ingresa para pedir o gestionar tu reparto.</p>
 
@@ -89,6 +91,15 @@ function IngresarForm() {
 
         <div className="mt-5 space-y-3">
           <ErrorText>{error}</ErrorText>
+          {error.includes("incorrecto") && (
+            // No revelamos si el celular existe; ofrecemos crear cuenta a cualquiera que falle.
+            <Link
+              href={`/registro?next=${encodeURIComponent(next)}${phone.length === 9 ? `&tel=${phone}` : ""}`}
+              className="btn-outline w-full"
+            >
+              ¿Aún no tienes cuenta? Crear mi cuenta con PIN
+            </Link>
+          )}
           <button onClick={() => loginPin()} disabled={loading !== null || pin.length !== 4} className="btn-primary w-full">
             {loading === "pin" && <Spinner className="h-5 w-5" />} Ingresar
           </button>
