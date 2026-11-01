@@ -5,11 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { PhoneInput, PinInput } from "@/components/PinInput";
 import { ErrorText, Logo, Spinner } from "@/components/ui";
+import { safePath } from "@/lib/safe-path";
 import { supabaseBrowser } from "@/lib/supabase/client";
-
-function safeNext(next: string | null) {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/inicio";
-}
 
 function GoogleIcon() {
   return (
@@ -25,7 +22,7 @@ function GoogleIcon() {
 function IngresarForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = safeNext(params.get("next"));
+  const next = safePath(params.get("next"));
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState<"google" | "pin" | null>(null);

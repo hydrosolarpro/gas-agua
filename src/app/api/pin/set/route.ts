@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
-import { PIN_RE, pinPassword } from "@/lib/pin";
+import { isWeakPin, PIN_RE, pinPassword, WEAK_PIN_MESSAGE } from "@/lib/pin";
 
 // Un usuario con sesión (por ejemplo, entró con Google) crea o cambia su PIN.
 export async function POST(request: Request) {
   const { pin } = (await request.json().catch(() => ({}))) as { pin?: string };
   if (!pin || !PIN_RE.test(pin)) return NextResponse.json({ error: "El PIN debe tener 4 dígitos" }, { status: 400 });
+  if (isWeakPin(pin)) return NextResponse.json({ error: WEAK_PIN_MESSAGE }, { status: 400 });
 
   const supabase = await supabaseServer();
   const { data } = await supabase.auth.getUser();

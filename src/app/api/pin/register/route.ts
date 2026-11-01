@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
-import { createPinUser, PHONE_RE, PIN_RE, pinEmail, pinPassword } from "@/lib/pin";
+import { createPinUser, isWeakPin, PHONE_RE, PIN_RE, pinEmail, pinPassword, WEAK_PIN_MESSAGE } from "@/lib/pin";
 
 export async function POST(request: Request) {
   const { fullName, phone, pin } = (await request.json().catch(() => ({}))) as {
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "El celular debe tener 9 dígitos y empezar con 9" }, { status: 400 });
   }
   if (!pin || !PIN_RE.test(pin)) return NextResponse.json({ error: "El PIN debe tener 4 dígitos" }, { status: 400 });
+  if (isWeakPin(pin)) return NextResponse.json({ error: WEAK_PIN_MESSAGE }, { status: 400 });
 
   const { data: existing } = await supabaseAdmin().from("profiles").select("id").eq("phone", phone).maybeSingle();
   if (existing) {

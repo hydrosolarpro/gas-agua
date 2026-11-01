@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
-import { createPinUser, PHONE_RE, PIN_RE } from "@/lib/pin";
+import { createPinUser, isWeakPin, PHONE_RE, PIN_RE, WEAK_PIN_MESSAGE } from "@/lib/pin";
 
 // El dueño da de alta a un repartidor que entrará con celular + PIN.
 export async function POST(request: Request) {
@@ -27,13 +27,18 @@ export async function POST(request: Request) {
   const { data: existing } = await admin.from("profiles").select("id, role").eq("phone", phone).maybeSingle();
   let userId: string;
   if (existing) {
-    if (existing.id === data.user.id || existing.role === "dueno") {
-      return NextResponse.json({ error: "Ese celular pertenece a un dueño de negocio" }, { status: 400 });
+    // Solo se puede sumar a quien ya es repartidor. Una cuenta de cliente o de dueño no se convierte sin su consentimiento.
+    if (existing.id === data.user.id || existing.role !== "repartidor") {
+      return NextResponse.json(
+        { error: "Ese celular ya tiene una cuenta en AguaGasExpress. Usa otro número para el repartidor." },
+        { status: 400 },
+      );
     }
     userId = existing.id;
     await admin.from("profiles").update({ role: "repartidor", onboarded: true }).eq("id", userId);
   } else {
     if (!pin || !PIN_RE.test(pin)) return NextResponse.json({ error: "El PIN debe tener 4 dígitos" }, { status: 400 });
+    if (isWeakPin(pin)) return NextResponse.json({ error: WEAK_PIN_MESSAGE }, { status: 400 });
     try {
       userId = await createPinUser(name, phone, pin);
     } catch (e) {

@@ -8,6 +8,7 @@ import { PhoneInput } from "@/components/PinInput";
 import { ErrorText, FullLoader, Logo, Spinner } from "@/components/ui";
 import { errorMessage } from "@/lib/format";
 import { useSession } from "@/lib/hooks";
+import { safePath } from "@/lib/safe-path";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 function Bienvenida() {
@@ -48,8 +49,7 @@ function Bienvenida() {
       (profile.full_name ?? "").trim().length >= 2
     ) {
       // Ya tenemos nombre y celular (se registró con PIN): no le pedimos nada más, vuelve a su pedido.
-      const next = params.get("next") ?? "/cliente";
-      const safe = next.startsWith("/") && !next.startsWith("//") ? next : "/cliente";
+      const safe = safePath(params.get("next"), "/cliente");
       supabaseBrowser()
         .from("profiles")
         .update({ onboarded: true })
@@ -82,8 +82,7 @@ function Bienvenida() {
         if (e2) throw e2;
         router.replace("/panel?nuevo=1");
       } else {
-        const next = params.get("next");
-        router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/cliente");
+        router.replace(safePath(params.get("next"), "/cliente"));
       }
     } catch (e) {
       setError(errorMessage(e));

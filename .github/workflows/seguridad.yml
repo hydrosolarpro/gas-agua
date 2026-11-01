@@ -1,0 +1,22 @@
+name: Seguridad
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  secretos-y-dependencias:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Buscar secretos en el repositorio
+        run: node scripts/check-secrets.mjs --all
+      - name: Auditar dependencias de producción
+        run: npm audit --omit=dev --audit-level=high

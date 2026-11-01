@@ -1,0 +1,3 @@
+#!/bin/sh
+# Revisa que no se cuelen secretos (.env, claves) en el commit.
+node scripts/check-secrets.mjs --staged || exit 1

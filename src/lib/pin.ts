@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 export const PHONE_RE = /^9\d{8}$/;
 export const PIN_RE = /^\d{4}$/;
 const MAX_FAILS = 5;
+const MAX_FAILS_DAY = 15;
 const WINDOW_MIN = 15;
 
 /** Contraseña larga derivada del PIN: el PIN nunca se guarda tal cual. */
@@ -22,16 +23,37 @@ export function randomPassword() {
   return randomBytes(32).toString("hex");
 }
 
+/**
+ * Bloqueo escalonado contra fuerza bruta (un PIN de 4 dígitos tiene solo 10 000 combinaciones):
+ * 5 fallos en 15 min → espera de 15 min; 15 fallos en 24 h → bloqueo hasta que pasen 24 h.
+ */
 export async function isLocked(phone: string) {
-  const since = new Date(Date.now() - WINDOW_MIN * 60_000).toISOString();
-  const { count } = await supabaseAdmin()
-    .from("pin_attempts")
-    .select("id", { count: "exact", head: true })
-    .eq("phone", phone)
-    .eq("success", false)
-    .gte("created_at", since);
-  return (count ?? 0) >= MAX_FAILS;
+  const db = supabaseAdmin();
+  const fails = async (minutes: number) => {
+    const since = new Date(Date.now() - minutes * 60_000).toISOString();
+    const { count } = await db
+      .from("pin_attempts")
+      .select("id", { count: "exact", head: true })
+      .eq("phone", phone)
+      .eq("success", false)
+      .gte("created_at", since);
+    return count ?? 0;
+  };
+  return (await fails(WINDOW_MIN)) >= MAX_FAILS || (await fails(24 * 60)) >= MAX_FAILS_DAY;
 }
+
+const WEAK_PINS = new Set(["1234", "4321", "1212", "2580", "0852", "1004", "2000", "1122", "6969", "1357", "2468"]);
+
+/** PIN fácil de adivinar: repetidos (1111), secuencias (1234, 4321) o los más comunes. */
+export function isWeakPin(pin: string) {
+  if (WEAK_PINS.has(pin)) return true;
+  if (/^(\d)\1{3}$/.test(pin)) return true;
+  const d = pin.split("").map(Number);
+  const step = d[1] - d[0];
+  return Math.abs(step) === 1 && d.every((v, i) => i === 0 || v - d[i - 1] === step);
+}
+
+export const WEAK_PIN_MESSAGE = "Ese PIN es muy fácil de adivinar. Elige otro (evita 1234, 0000 o números repetidos).";
 
 export async function recordAttempt(phone: string, success: boolean) {
   await supabaseAdmin().from("pin_attempts").insert({ phone, success });

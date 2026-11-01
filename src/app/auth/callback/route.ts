@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safePath } from "@/lib/safe-path";
 import { supabaseServer } from "@/lib/supabase/server";
 
 // Regreso desde Google: canjea el código por una sesión.
@@ -6,7 +7,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next");
-  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/inicio";
+  const safeNext = safePath(next);
 
   if (code) {
     const supabase = await supabaseServer();
