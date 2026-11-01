@@ -12,7 +12,7 @@ type Step = "datos" | "pin" | "confirmar";
 // Activación única de la cuenta de administrador: celular reservado + código secreto + PIN.
 export default function ActivarAdmin() {
   const router = useRouter();
-  const [state, setState] = useState<{ activado: boolean; phone: string } | null>(null);
+  const [state, setState] = useState<{ activado: boolean; existe?: boolean; nombre?: string; phone: string } | null>(null);
   const [step, setStep] = useState<Step>("datos");
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
@@ -24,7 +24,10 @@ export default function ActivarAdmin() {
   useEffect(() => {
     fetch("/api/admin/activar")
       .then((r) => r.json())
-      .then(setState)
+      .then((s) => {
+        setState(s);
+        if (s?.nombre) setName(s.nombre);
+      })
       .catch(() => setState({ activado: false, phone: "" }));
   }, []);
 
@@ -93,6 +96,7 @@ export default function ActivarAdmin() {
                 {state?.phone && (
                   <p className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
                     Celular del administrador: <b>+51 {state.phone}</b>
+                    {state.existe && " · Ya tiene una cuenta: se convertirá en administradora y se guardará el PIN que elijas."}
                   </p>
                 )}
                 <div>
