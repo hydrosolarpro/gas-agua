@@ -109,7 +109,7 @@ function IngresarForm() {
               </p>
               {rol === "admin" && (
                 <Link href="/activar-admin" className="btn-primary w-full">
-                  Activar mi cuenta de administrador
+                  Crear mi PIN de administrador
                 </Link>
               )}
               <button
@@ -150,9 +150,9 @@ function IngresarForm() {
         {rol === "repartidor" && "¿Aún no tienes acceso? Tu dueño de negocio te registra y te da tu celular y tu PIN."}
         {rol === "admin" && (
           <>
-            ¿Primera vez?{" "}
+            ¿Primera vez o olvidaste tu PIN?{" "}
             <Link href="/activar-admin" className="font-bold text-agua-700">
-              Activa tu cuenta de administrador
+              Crea un PIN nuevo
             </Link>
           </>
         )}
