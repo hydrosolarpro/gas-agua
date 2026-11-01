@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@theme {
+  --color-agua-50: #ecfeff;
+  --color-agua-100: #cffafe;
+  --color-agua-500: #06b6d4;
+  --color-agua-600: #0891b2;
+  --color-agua-700: #0e7490;
+  --color-gas-50: #fff7ed;
+  --color-gas-100: #ffedd5;
+  --color-gas-500: #f97316;
+  --color-gas-600: #ea580c;
+  --color-ink: #0f172a;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: #f4f7fb;
+  color: var(--color-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+@utility card {
+  @apply rounded-3xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)];
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-base font-semibold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn bg-gradient-to-r from-agua-600 to-agua-500 text-white shadow-lg shadow-agua-500/25 hover:brightness-105;
+}
+@utility btn-gas {
+  @apply btn bg-gradient-to-r from-gas-600 to-gas-500 text-white shadow-lg shadow-gas-500/25 hover:brightness-105;
+}
+@utility btn-success {
+  @apply btn bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 hover:bg-emerald-700;
+}
+@utility btn-ghost {
+  @apply btn bg-slate-100 text-slate-800 hover:bg-slate-200;
+}
+@utility btn-outline {
+  @apply btn border border-slate-200 bg-white text-slate-800 hover:bg-slate-50;
+}
+@utility input {
+  @apply w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition placeholder:text-slate-400 focus:border-agua-500 focus:ring-4 focus:ring-agua-100;
+}
+@utility label {
+  @apply mb-1.5 block text-sm font-semibold text-slate-700;
+}
+@utility chip {
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
+}
+.leaflet-container {
+  font-family: inherit;
+  z-index: 0;
+}
+
+.marker-pulse {
+  animation: pulse 1.6s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(8, 145, 178, 0.55); }
+  100% { box-shadow: 0 0 0 18px rgba(8, 145, 178, 0); }
+}
+
+::selection {
+  background: var(--color-agua-100);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-agua-500);
+  outline-offset: 2px;
+  border-radius: 0.75rem;
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.sheet-backdrop {
+  animation: fade-in 180ms ease-out;
+}
+
+.sheet-panel {
+  animation: sheet-up 260ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(32px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-backdrop, .sheet-panel, .marker-pulse {
+    animation: none;
+  }
+}
