@@ -68,7 +68,7 @@ export default function CuentaPage() {
             <h2 className="text-lg font-bold">{profile.has_pin ? "Cambiar mi PIN" : "Crear mi PIN"}</h2>
           </div>
           <p className="mb-4 text-sm text-slate-600">
-            Con tu PIN entras con tu celular <b>{profile.phone}</b> sin necesidad de Google.
+            Con tu PIN entras con tu celular <b>{profile.phone}</b> para entrar desde cualquier celular.
           </p>
           <PinInput value={pin} onChange={setPin} onComplete={savePin} label="Nuevo PIN" />
           <div className="mt-4 space-y-2">

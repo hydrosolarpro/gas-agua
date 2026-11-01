@@ -83,7 +83,7 @@ export async function POST(request: Request) {
   await admin.from("platform_settings").update({ admin_name: name, admin_phone: ADMIN_PHONE }).eq("id", 1);
   await recordAttempt(LOCK_KEY, true);
 
-  // Email interno de la cuenta: puede ser el de PIN o el de Google; se obtiene del propio usuario.
+  // Email interno de la cuenta (se obtiene del propio usuario).
   const { data: u } = await admin.auth.admin.getUserById(userId);
   const supabase = await supabaseServer();
   const { error: signInError } = await supabase.auth.signInWithPassword({

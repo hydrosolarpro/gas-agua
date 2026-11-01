@@ -1,5 +1,5 @@
 -- Garantiza en la base de datos que toda cuenta activa (cliente, dueño o repartidor) tenga celular y nombre.
--- Hasta ahora lo exigía solo la pantalla; los usuarios de Google entran sin celular y lo completan en "Bienvenida".
+-- Hasta ahora lo exigía solo la pantalla.
 alter table public.profiles
   add constraint profiles_phone_required_when_onboarded
   check (not onboarded or phone is not null);

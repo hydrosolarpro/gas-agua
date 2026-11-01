@@ -8,21 +8,14 @@ import { PhoneInput, PinInput } from "@/components/PinInput";
 import { AuthTabs } from "@/components/AuthTabs";
 import { Bike, Flame, Store } from "@/components/icons";
 import { ErrorText, Logo, Spinner } from "@/components/ui";
+import { appRole } from "@/lib/hooks";
 import { safePath } from "@/lib/safe-path";
+import type { AppRole, Role } from "@/lib/types";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden>
-      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
-      <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
-      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
-      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
-    </svg>
-  );
-}
-
 type Rol = "cliente" | "dueno" | "repartidor" | "admin";
+
+const ROL_NAME: Record<Rol, string> = { cliente: "cliente", dueno: "dueño de negocio", repartidor: "repartidor", admin: "administrador" };
 
 const ROLES: Record<Rol, { title: string; text: string; Icon: typeof Store }> = {
   cliente: { title: "¡Hola!", text: "Ingresa para pedir gas o agua.", Icon: Flame },
@@ -40,21 +33,9 @@ function IngresarForm() {
   const { title, text, Icon } = ROLES[rol];
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
-  const [loading, setLoading] = useState<"google" | "pin" | null>(null);
-  const [error, setError] = useState(params.get("error") === "google" ? "No se pudo ingresar con Google. Inténtalo otra vez." : "");
-
-  async function google() {
-    setLoading("google");
-    setError("");
-    const { error } = await supabaseBrowser().auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
-    });
-    if (error) {
-      setError("Google todavía no está activado en este entorno. Usa tu celular y PIN.");
-      setLoading(null);
-    }
-  }
+  const [loading, setLoading] = useState<"pin" | null>(null);
+  const [error, setError] = useState("");
+  const [mismatch, setMismatch] = useState<AppRole | null>(null);
 
   async function loginPin(value = pin) {
     if (phone.length !== 9) return setError("Ingresa tu celular de 9 dígitos");
@@ -72,6 +53,20 @@ function IngresarForm() {
       setPin("");
       setLoading(null);
       return;
+    }
+    // Si entró por una puerta que no es la de su cuenta (p. ej. "Administrador" sin estar activado), se lo decimos.
+    if (rol !== "cliente") {
+      const db = supabaseBrowser();
+      const { data: u } = await db.auth.getUser();
+      const { data: p } = u.user
+        ? await db.from("profiles").select("role, is_admin").eq("id", u.user.id).single<{ role: Role; is_admin: boolean }>()
+        : { data: null };
+      if (p && appRole(p) !== rol) {
+        setMismatch(appRole(p));
+        setPin("");
+        setLoading(null);
+        return;
+      }
     }
     router.replace(next);
     router.refresh();
@@ -96,19 +91,7 @@ function IngresarForm() {
           </div>
         </div>
 
-        {rol === "cliente" && (
-          <>
-            <button onClick={google} disabled={loading !== null} className="btn-outline mt-6 w-full">
-              {loading === "google" ? <Spinner className="h-5 w-5" /> : <GoogleIcon />}
-              Continuar con Google
-            </button>
-
-            <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              <span className="h-px flex-1 bg-slate-200" /> o con tu celular <span className="h-px flex-1 bg-slate-200" />
-            </div>
-          </>
-        )}
-        {rol !== "cliente" && <div className="mt-6" />}
+        <div className="mt-6" />
 
         <label className="label">Celular</label>
         <PhoneInput value={phone} onChange={setPhone} />
@@ -119,6 +102,27 @@ function IngresarForm() {
 
         <div className="mt-5 space-y-3">
           <ErrorText>{error}</ErrorText>
+          {mismatch && (
+            <div className="space-y-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
+              <p>
+                Entraste, pero esta cuenta es de <b>{ROL_NAME[mismatch]}</b>, no de {ROL_NAME[rol]}.
+              </p>
+              {rol === "admin" && (
+                <Link href="/activar-admin" className="btn-primary w-full">
+                  Activar mi cuenta de administrador
+                </Link>
+              )}
+              <button
+                onClick={() => {
+                  router.replace("/inicio");
+                  router.refresh();
+                }}
+                className="btn-outline w-full"
+              >
+                Continuar como {ROL_NAME[mismatch]}
+              </button>
+            </div>
+          )}
           {rol === "cliente" && error.includes("incorrecto") && (
             // No revelamos si el celular existe; ofrecemos crear cuenta a cualquiera que falle.
             <Link

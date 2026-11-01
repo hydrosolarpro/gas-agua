@@ -4,8 +4,8 @@ App web progresiva (PWA, se instala en el celular) para negocios peruanos que re
 
 | Perfil | Qué hace | Cómo entra |
 |---|---|---|
-| **Cliente** | Pide gas/agua, marca su ubicación en el mapa, elige cómo pagar (Yape, Plin, efectivo) y sigue al repartidor en vivo | Google o celular + PIN de 4 dígitos |
-| **Dueño del negocio** | Ve todos los pedidos, asigna repartidores, ve el mapa en vivo, valida los pagos contra-entrega y revisa ingresos | Google o celular + PIN |
+| **Cliente** | Pide gas/agua, marca su ubicación en el mapa, elige cómo pagar (Yape, Plin, efectivo) y sigue al repartidor en vivo | Celular + PIN de 4 dígitos |
+| **Dueño del negocio** | Ve todos los pedidos, asigna repartidores, ve el mapa en vivo, valida los pagos contra-entrega y revisa ingresos | Celular + PIN (lo invita el administrador) |
 | **Repartidor (despachador)** | Recibe pedidos, comparte su GPS, navega hasta el cliente, marca la entrega y registra el cobro | Celular + PIN (el dueño le crea la cuenta) |
 
 ## 1. Stack
@@ -14,7 +14,7 @@ App web progresiva (PWA, se instala en el celular) para negocios peruanos que re
 |---|---|---|
 | Frontend + API | **Next.js 16** (App Router, TypeScript, Tailwind 4) | Un solo proyecto, se despliega en Vercel con cada push a GitHub |
 | Base de datos | **Supabase (PostgreSQL)** con Row Level Security | Cada usuario ve solo lo suyo, reglas en la base de datos |
-| Autenticación | **Supabase Auth**: Google OAuth + PIN propio | Gmail para quien lo prefiera; PIN de 4 dígitos para el día a día |
+| Autenticación | **Supabase Auth** con PIN propio (celular + 4 dígitos) | Sin correos ni contraseñas largas: lo más simple para clientes y repartidores |
 | Tiempo real | **Supabase Realtime** (cambios de Postgres) | Pedidos y posición del repartidor se actualizan sin recargar |
 | Mapas | **Leaflet + OpenStreetMap**, rutas con **OSRM** | Gratis y sin tarjeta; se puede cambiar a Google Maps/Mapbox luego |
 | Navegación | Enlaces directos a **Google Maps** y **Waze** | El repartidor usa el navegador que ya conoce |
@@ -22,7 +22,7 @@ App web progresiva (PWA, se instala en el celular) para negocios peruanos que re
 ## 2. Arquitectura general
 
 ```
- Celular cliente ─┐                      ┌─ Supabase Auth (Google / PIN)
+ Celular cliente ─┐                      ┌─ Supabase Auth (PIN)
  Celular repartidor ─┼─► Next.js (Vercel) ─┼─ PostgreSQL + RLS (pedidos, pagos, productos)
  PC/celular dueño ─┘    · páginas React    ├─ Funciones SQL (crear pedido, cambiar estado, validar pago)
                         · API PIN/repartidor └─ Realtime (pedidos, ubicación del repartidor)
@@ -34,13 +34,11 @@ App web progresiva (PWA, se instala en el celular) para negocios peruanos que re
 - Las operaciones sensibles (crear pedido con precio real, cambiar estado, validar pago) pasan por **funciones SQL `security definer`** que verifican quién llama y en qué estado está el pedido.
 - La clave de servicio solo se usa en el servidor (login con PIN y alta de repartidores).
 
-## 3. Acceso: Google y PIN de 4 dígitos
+## 3. Acceso: celular y PIN de 4 dígitos
 
-- **Google**: botón "Continuar con Google" → Supabase OAuth → `/auth/callback` → si es nuevo, pantalla de bienvenida (nombre, celular, "soy cliente" o "tengo un negocio").
 - **PIN**: celular (9 dígitos) + PIN de 4 dígitos.
   - El PIN nunca se guarda en texto: se deriva una contraseña larga con `HMAC-SHA256(PIN_PEPPER, celular:PIN)` en el servidor.
   - Bloqueo tras **5 intentos fallidos en 15 minutos** por celular (tabla `pin_attempts`).
-  - Un usuario de Google también puede crear su PIN para entrar rápido desde otro celular.
 - El dueño crea a sus repartidores con nombre, celular y PIN; ellos entran solo con PIN.
 
 ## 4. Modelo de datos (resumen)
@@ -89,7 +87,7 @@ App web progresiva (PWA, se instala en el celular) para negocios peruanos que re
 | Ruta | Para |
 |---|---|
 | `/` | Portada y entrada según rol |
-| `/ingresar`, `/registro`, `/bienvenida` | Acceso con Google o PIN, alta y onboarding |
+| `/ingresar`, `/registro`, `/bienvenida` | Acceso con celular y PIN, alta y onboarding |
 | `/n/[slug]` | Tienda del negocio (enlace que el dueño comparte) |
 | `/cliente`, `/cliente/pedido/[id]` | Mis pedidos y seguimiento en vivo |
 | `/repartidor`, `/repartidor/pedido/[id]` | Pedidos asignados, ruta, entrega y cobro |
@@ -106,7 +104,7 @@ App web progresiva (PWA, se instala en el celular) para negocios peruanos que re
 
 | Fase | Contenido |
 |---|---|
-| **1 (esta entrega)** | Acceso Google/PIN, pedidos, mapas en vivo, entrega y cobro contra-entrega, dashboard |
+| **1 (esta entrega)** | Acceso con PIN, pedidos, mapas en vivo, entrega y cobro contra-entrega, dashboard |
 | 2 | Notificaciones push, foto del comprobante Yape, recompra con un toque, pedidos recurrentes de agua |
 | 3 | Comprobantes SUNAT, inventario de balones llenos/vacíos, reportes descargables |
 | 4 | Suscripciones de pago (S/ 39 / 79 / 149), multi-sede, estadísticas avanzadas |
