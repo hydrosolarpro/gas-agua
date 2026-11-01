@@ -5,7 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "./supabase/client";
 import { distanceM, fetchRoute, type Route } from "./geo";
-import type { Business, DriverLocation, LatLng, Order, Profile, Role } from "./types";
+import type { AppRole, Business, DriverLocation, LatLng, Order, Profile } from "./types";
+
+/** Rol con el que se enruta a la persona: el administrador se identifica por `is_admin`. */
+export const appRole = (p: Pick<Profile, "role" | "is_admin">): AppRole => (p.is_admin ? "admin" : p.role);
+
+/** Pantalla de inicio de cada rol. */
+export const homeFor = (role: AppRole) =>
+  ({ admin: "/admin", dueno: "/panel", repartidor: "/repartidor", cliente: "/cliente" })[role];
 
 export type Session = {
   loading: boolean;
@@ -19,7 +26,7 @@ export type Session = {
  * Carga usuario, perfil y negocio (propio o donde reparte).
  * Si se pasan roles, redirige a quien no tenga sesión o no tenga ese rol.
  */
-export function useSession(roles?: Role[]): Session {
+export function useSession(roles?: AppRole[]): Session {
   const router = useRouter();
   const [state, setState] = useState<Omit<Session, "reload">>({
     loading: true,
@@ -35,7 +42,11 @@ export function useSession(roles?: Role[]): Session {
     const user = data.user;
     if (!user) {
       setState({ loading: false, user: null, profile: null, business: null });
-      if (rolesKey) router.replace(`/ingresar?next=${encodeURIComponent(location.pathname)}`);
+      if (rolesKey) {
+        const p = location.pathname;
+        const rol = p.startsWith("/admin") ? "admin" : p.startsWith("/panel") ? "dueno" : p.startsWith("/repartidor") ? "repartidor" : "";
+        router.replace(`/ingresar?next=${encodeURIComponent(p)}${rol ? `&rol=${rol}` : ""}`);
+      }
       return;
     }
     const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single<Profile>();
@@ -56,7 +67,7 @@ export function useSession(roles?: Role[]): Session {
 
     if (rolesKey && profile) {
       if (!profile.onboarded) router.replace("/bienvenida");
-      else if (!rolesKey.split(",").includes(profile.role)) router.replace("/inicio");
+      else if (!rolesKey.split(",").includes(appRole(profile))) router.replace("/inicio");
     }
   }, [router, rolesKey]);
 

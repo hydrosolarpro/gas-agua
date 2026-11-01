@@ -5,7 +5,7 @@ import { Store } from "@/components/icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { Bike, ClipboardList, LayoutDashboard, Package, Settings, UserRound } from "lucide-react";
+import { Bike, ClipboardList, CreditCard, LayoutDashboard, Package, Settings, UserRound } from "lucide-react";
 import { FullLoader, Logo } from "@/components/ui";
 import { useSession } from "@/lib/hooks";
 import { PanelCtx } from "@/components/panel-context";
@@ -16,6 +16,7 @@ const NAV = [
   { href: "/panel/productos", label: "Productos", icon: Package },
   { href: "/panel/repartidores", label: "Equipo", icon: Bike },
   { href: "/panel/negocio", label: "Negocio", icon: Settings },
+  { href: "/panel/suscripcion", label: "Plan", icon: CreditCard },
 ];
 
 export default function PanelLayout({ children }: { children: ReactNode }) {
@@ -55,7 +56,7 @@ export default function PanelLayout({ children }: { children: ReactNode }) {
           {children}
         </div>
 
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
           {NAV.map(({ href, label, icon: Icon }) => {
             const active = href === "/panel" ? pathname === href : pathname.startsWith(href);
             return (

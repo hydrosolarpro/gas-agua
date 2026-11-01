@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { FullLoader } from "@/components/ui";
-import { useSession } from "@/lib/hooks";
+import { appRole, homeFor, useSession } from "@/lib/hooks";
 
 // Envía a cada usuario a su pantalla según su rol.
 export default function Inicio() {
@@ -14,9 +14,7 @@ export default function Inicio() {
     if (loading) return;
     if (!user) router.replace("/ingresar");
     else if (!profile?.onboarded) router.replace("/bienvenida");
-    else if (profile.role === "dueno") router.replace("/panel");
-    else if (profile.role === "repartidor") router.replace("/repartidor");
-    else router.replace("/cliente");
+    else router.replace(homeFor(appRole(profile)));
   }, [loading, user, profile, router]);
 
   return <FullLoader text="Abriendo tu cuenta…" />;

@@ -59,8 +59,17 @@ export async function recordAttempt(phone: string, success: boolean) {
   await supabaseAdmin().from("pin_attempts").insert({ phone, success });
 }
 
+/** Celular reservado para el administrador: nadie más puede registrarlo por las rutas públicas. */
+export const ADMIN_PHONE = process.env.ADMIN_PHONE ?? "960442025";
+
 /** Crea una cuenta que entra con celular + PIN. Devuelve el id del usuario. */
-export async function createPinUser(fullName: string, phone: string, pin: string) {
+export async function createPinUser(
+  fullName: string,
+  phone: string,
+  pin: string,
+  opts: { allowAdminPhone?: boolean } = {},
+) {
+  if (phone === ADMIN_PHONE && !opts.allowAdminPhone) throw new Error("Ese número no está disponible");
   const admin = supabaseAdmin();
   const { data, error } = await admin.auth.admin.createUser({
     email: pinEmail(phone),

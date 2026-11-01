@@ -7,14 +7,14 @@ import { useState } from "react";
 import { KeyRound, LogOut } from "lucide-react";
 import { PinInput } from "@/components/PinInput";
 import { ErrorText, FullLoader, Spinner, TopBar } from "@/components/ui";
-import { useSession } from "@/lib/hooks";
+import { appRole, homeFor, useSession } from "@/lib/hooks";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
-const ROLE_LABEL = { cliente: "Cliente", dueno: "Dueño de negocio", repartidor: "Repartidor" };
+const ROLE_LABEL = { cliente: "Cliente", dueno: "Dueño de negocio", repartidor: "Repartidor", admin: "Administrador" };
 
 export default function CuentaPage() {
   const router = useRouter();
-  const { loading, profile, user, business, reload } = useSession(["cliente", "dueno", "repartidor"]);
+  const { loading, profile, user, business, reload } = useSession(["cliente", "dueno", "repartidor", "admin"]);
   const [pin, setPin] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -44,7 +44,7 @@ export default function CuentaPage() {
   }
 
   if (loading || !profile) return <FullLoader />;
-  const home = profile.role === "dueno" ? "/panel" : profile.role === "repartidor" ? "/repartidor" : "/cliente";
+  const home = homeFor(appRole(profile));
 
   return (
     <div className="min-h-dvh">
@@ -57,7 +57,7 @@ export default function CuentaPage() {
             <p className="flex items-center gap-2 text-slate-600"><Mail className="h-4 w-4" /> {user.email}</p>
           )}
           <p className="mt-2">
-            <span className="chip bg-agua-100 text-agua-700">{ROLE_LABEL[profile.role]}</span>
+            <span className="chip bg-agua-100 text-agua-700">{ROLE_LABEL[appRole(profile)]}</span>
             {business && <span className="chip ml-2 bg-slate-100 text-slate-700"><Store className="h-3.5 w-3.5" /> {business.name}</span>}
           </p>
         </section>

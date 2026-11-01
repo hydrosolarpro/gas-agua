@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { PhoneInput, PinInput } from "@/components/PinInput";
 import { AuthTabs } from "@/components/AuthTabs";
+import { Bike, Flame, Store } from "@/components/icons";
 import { ErrorText, Logo, Spinner } from "@/components/ui";
 import { safePath } from "@/lib/safe-path";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -20,10 +22,22 @@ function GoogleIcon() {
   );
 }
 
+type Rol = "cliente" | "dueno" | "repartidor" | "admin";
+
+const ROLES: Record<Rol, { title: string; text: string; Icon: typeof Store }> = {
+  cliente: { title: "¡Hola!", text: "Ingresa para pedir gas o agua.", Icon: Flame },
+  dueno: { title: "Ingresa a tu negocio", text: "Gestiona pedidos, repartidores y cobros.", Icon: Store },
+  repartidor: { title: "Ingresa como repartidor", text: "Mira tus entregas y comparte tu ubicación.", Icon: Bike },
+  admin: { title: "Administrador", text: "Panel de la plataforma.", Icon: ShieldCheck },
+};
+
 function IngresarForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = safePath(params.get("next"));
+  const rolParam = params.get("rol");
+  const rol: Rol = rolParam === "dueno" || rolParam === "repartidor" || rolParam === "admin" ? rolParam : "cliente";
+  const { title, text, Icon } = ROLES[rol];
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState<"google" | "pin" | null>(null);
@@ -69,18 +83,32 @@ function IngresarForm() {
         <Logo />
       </Link>
       <div className="card mt-8 w-full max-w-md p-6">
-        <AuthTabs active="ingresar" next={params.get("next")} />
-        <h1 className="text-2xl font-extrabold">¡Hola!</h1>
-        <p className="mt-1 text-slate-600">Ingresa para pedir o gestionar tu reparto.</p>
-
-        <button onClick={google} disabled={loading !== null} className="btn-outline mt-6 w-full">
-          {loading === "google" ? <Spinner className="h-5 w-5" /> : <GoogleIcon />}
-          Continuar con Google
-        </button>
-
-        <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          <span className="h-px flex-1 bg-slate-200" /> o con tu celular <span className="h-px flex-1 bg-slate-200" />
+        {rol === "cliente" && <AuthTabs active="ingresar" next={params.get("next")} />}
+        <div className="flex items-center gap-3">
+          {rol !== "cliente" && (
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-agua-50 text-agua-700">
+              <Icon className="h-6 w-6" />
+            </span>
+          )}
+          <div>
+            <h1 className="text-2xl font-extrabold">{title}</h1>
+            <p className="text-slate-600">{text}</p>
+          </div>
         </div>
+
+        {rol === "cliente" && (
+          <>
+            <button onClick={google} disabled={loading !== null} className="btn-outline mt-6 w-full">
+              {loading === "google" ? <Spinner className="h-5 w-5" /> : <GoogleIcon />}
+              Continuar con Google
+            </button>
+
+            <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <span className="h-px flex-1 bg-slate-200" /> o con tu celular <span className="h-px flex-1 bg-slate-200" />
+            </div>
+          </>
+        )}
+        {rol !== "cliente" && <div className="mt-6" />}
 
         <label className="label">Celular</label>
         <PhoneInput value={phone} onChange={setPhone} />
@@ -91,7 +119,7 @@ function IngresarForm() {
 
         <div className="mt-5 space-y-3">
           <ErrorText>{error}</ErrorText>
-          {error.includes("incorrecto") && (
+          {rol === "cliente" && error.includes("incorrecto") && (
             // No revelamos si el celular existe; ofrecemos crear cuenta a cualquiera que falle.
             <Link
               href={`/registro?next=${encodeURIComponent(next)}${phone.length === 9 ? `&tel=${phone}` : ""}`}
@@ -105,12 +133,31 @@ function IngresarForm() {
           </button>
         </div>
       </div>
-      <p className="mt-6 text-sm text-slate-600">
-        ¿Primera vez?{" "}
-        <Link href={`/registro?next=${encodeURIComponent(next)}`} className="font-bold text-agua-700">
-          Crea tu cuenta con PIN
-        </Link>
+      <p className="mt-6 max-w-md text-center text-sm text-slate-600">
+        {rol === "cliente" && (
+          <>
+            ¿Primera vez?{" "}
+            <Link href={`/registro?next=${encodeURIComponent(next)}`} className="font-bold text-agua-700">
+              Crea tu cuenta con PIN
+            </Link>
+          </>
+        )}
+        {rol === "dueno" && "¿Quieres usar AguaGasExpress en tu negocio? El administrador te envía una invitación para crear tu cuenta."}
+        {rol === "repartidor" && "¿Aún no tienes acceso? Tu dueño de negocio te registra y te da tu celular y tu PIN."}
+        {rol === "admin" && (
+          <>
+            ¿Primera vez?{" "}
+            <Link href="/activar-admin" className="font-bold text-agua-700">
+              Activa tu cuenta de administrador
+            </Link>
+          </>
+        )}
       </p>
+      {rol !== "cliente" && (
+        <Link href="/ingresar" className="mt-3 text-sm font-semibold text-slate-500 hover:text-slate-800">
+          ← Soy cliente
+        </Link>
+      )}
     </main>
   );
 }

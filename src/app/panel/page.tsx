@@ -9,7 +9,9 @@ import { Copy } from "lucide-react";
 import Map, { LIMA, type MapMarker } from "@/components/map/Map";
 import { OrderRow } from "@/components/orders";
 import { Empty, FullLoader } from "@/components/ui";
+import { monthLabel } from "@/components/admin-context";
 import { useBusinessOrders, useDrivers } from "@/components/useBusinessOrders";
+import { useSubscription } from "@/components/useSubscription";
 import { ACTIVE_STATUSES, METHOD, money } from "@/lib/format";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { DriverLocation, PaymentMethod } from "@/lib/types";
@@ -27,6 +29,7 @@ function Kpi({ label, value, tone, sub, className = "" }: { label: string; value
 
 function Resumen() {
   const { business } = usePanel();
+  const sub = useSubscription(business);
   const params = useSearchParams();
   const { orders } = useBusinessOrders(business.id, 7);
   const { drivers } = useDrivers(business.id);
@@ -121,6 +124,16 @@ function Resumen() {
             Siguiente: ajusta tus precios en <Link href="/panel/productos" className="font-bold underline">Productos</Link> y agrega repartidores en <Link href="/panel/repartidores" className="font-bold underline">Equipo</Link>.
           </p>
         </section>
+      )}
+
+      {sub.status === "pendiente" && (
+        <Link href="/panel/suscripcion" className="flex items-center justify-between gap-3 rounded-3xl border-2 border-rose-200 bg-rose-50 p-4">
+          <span>
+            <span className="block font-bold text-rose-900">Tu pago de {monthLabel(sub.period)} está pendiente</span>
+            <span className="text-sm text-rose-800">Plan de {money(sub.fee)} al mes. Mira dónde pagar y avisa tu pago.</span>
+          </span>
+          <span className="shrink-0 text-sm font-bold text-rose-900">Pagar →</span>
+        </Link>
       )}
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">

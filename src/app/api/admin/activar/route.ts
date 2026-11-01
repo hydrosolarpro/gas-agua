@@ -1,0 +1,68 @@
+import { NextResponse } from "next/server";
+import { normalizeCode, safeEqual } from "@/lib/admin";
+import {
+  ADMIN_PHONE,
+  createPinUser,
+  isLocked,
+  isWeakPin,
+  PIN_RE,
+  pinEmail,
+  pinPassword,
+  recordAttempt,
+  WEAK_PIN_MESSAGE,
+} from "@/lib/pin";
+import { supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
+
+const LOCK_KEY = "admin-setup";
+
+async function adminExists() {
+  const { count } = await supabaseAdmin().from("profiles").select("id", { count: "exact", head: true }).eq("is_admin", true);
+  return (count ?? 0) > 0;
+}
+
+// ¿Ya está activado el administrador? (el formulario lo usa para mostrarse o no)
+export async function GET() {
+  return NextResponse.json({ activado: await adminExists(), phone: ADMIN_PHONE.slice(0, 3) + " *** " + ADMIN_PHONE.slice(-3) });
+}
+
+// Activación única del administrador: celular reservado + código secreto de activación + PIN que elige la persona.
+export async function POST(request: Request) {
+  const { fullName, pin, code } = (await request.json().catch(() => ({}))) as { fullName?: string; pin?: string; code?: string };
+  const expected = process.env.ADMIN_SETUP_CODE;
+  if (!expected) return NextResponse.json({ error: "La activación no está habilitada" }, { status: 503 });
+  if (await adminExists()) return NextResponse.json({ error: "El administrador ya fue activado" }, { status: 409 });
+  if (await isLocked(LOCK_KEY)) {
+    return NextResponse.json({ error: "Demasiados intentos. Espera 15 minutos." }, { status: 429 });
+  }
+  if (!code || !safeEqual(normalizeCode(code), normalizeCode(expected))) {
+    await recordAttempt(LOCK_KEY, false);
+    return NextResponse.json({ error: "Código de activación incorrecto" }, { status: 401 });
+  }
+  const name = fullName?.trim() ?? "";
+  if (name.length < 2) return NextResponse.json({ error: "Escribe tu nombre" }, { status: 400 });
+  if (!pin || !PIN_RE.test(pin)) return NextResponse.json({ error: "El PIN debe tener 4 dígitos" }, { status: 400 });
+  if (isWeakPin(pin)) return NextResponse.json({ error: WEAK_PIN_MESSAGE }, { status: 400 });
+
+  const admin = supabaseAdmin();
+  let userId: string;
+  try {
+    userId = await createPinUser(name, ADMIN_PHONE, pin, { allowAdminPhone: true });
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 400 });
+  }
+  const { error } = await admin.from("profiles").update({ is_admin: true, onboarded: true }).eq("id", userId);
+  if (error) {
+    await admin.auth.admin.deleteUser(userId);
+    return NextResponse.json({ error: "No se pudo activar el administrador" }, { status: 500 });
+  }
+  await admin.from("platform_settings").update({ admin_name: name, admin_phone: ADMIN_PHONE }).eq("id", 1);
+  await recordAttempt(LOCK_KEY, true);
+
+  const supabase = await supabaseServer();
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: pinEmail(ADMIN_PHONE),
+    password: pinPassword(userId, pin),
+  });
+  if (signInError) return NextResponse.json({ error: "Activado, pero no se pudo iniciar sesión. Ingresa con tu PIN." }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}

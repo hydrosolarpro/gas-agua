@@ -51,10 +51,7 @@ function RegistroForm() {
       setPin2("");
       return;
     }
-    const wantsBusiness = next?.includes("negocio=1");
-    router.replace(
-      wantsBusiness ? "/bienvenida?negocio=1" : `/bienvenida${next ? `?next=${encodeURIComponent(next)}` : ""}`,
-    );
+    router.replace(`/bienvenida${next ? `?next=${encodeURIComponent(next)}` : ""}`);
     router.refresh();
   }
 

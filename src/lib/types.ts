@@ -1,4 +1,6 @@
 export type Role = "cliente" | "dueno" | "repartidor";
+/** Rol efectivo en la app: el administrador se identifica con `profiles.is_admin`. */
+export type AppRole = Role | "admin";
 export type OrderStatus = "pendiente" | "aceptado" | "en_camino" | "entregado" | "cancelado";
 export type PaymentMethod = "yape" | "plin" | "efectivo" | "otro";
 export type PaymentStatus = "pendiente" | "reportado" | "validado" | "rechazado";
@@ -9,6 +11,7 @@ export type Profile = {
   full_name: string;
   phone: string | null;
   role: Role;
+  is_admin: boolean;
   onboarded: boolean;
   has_pin: boolean;
   address_text: string | null;
@@ -18,11 +21,39 @@ export type Profile = {
   last_business_id: string | null;
 };
 
+export type PlatformSettings = {
+  admin_name: string | null;
+  admin_email: string | null;
+  admin_phone: string | null;
+  account_holder: string | null;
+  bank_name: string | null;
+  bank_account: string | null;
+  bank_cci: string | null;
+  yape_number: string | null;
+  plin_number: string | null;
+  monthly_fee: number;
+};
+
+export type SubscriptionMethod = "yape" | "plin" | "transferencia" | "deposito" | "efectivo" | "otro";
+
+export type SubscriptionPayment = {
+  id: string;
+  business_id: string;
+  amount: number;
+  period: string;
+  method: SubscriptionMethod;
+  operation_code: string | null;
+  status: "pendiente" | "validado" | "rechazado";
+  reported_at: string;
+  validated_at: string | null;
+};
+
 export type Business = {
   id: string;
   owner_id: string;
   name: string;
   slug: string;
+  fee_override?: number | null;
   phone: string | null;
   yape_number: string | null;
   plin_number: string | null;

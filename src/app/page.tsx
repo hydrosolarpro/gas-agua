@@ -6,7 +6,7 @@ import { Logo } from "@/components/ui";
 const FEATURES = [
   { icon: MapPinned, title: "Seguimiento en vivo", text: "Mira en el mapa por dónde viene tu balón o bidón, como en un taxi por app." },
   { icon: Wallet, title: "Paga al recibir", text: "Yape, Plin o efectivo contra-entrega. Sin tarjetas ni sorpresas." },
-  { icon: Smartphone, title: "Entra con tu PIN", text: "Con tu cuenta de Google o con tu celular y un PIN de 4 dígitos." },
+  { icon: Smartphone, title: "Entra con tu PIN", text: "Con tu celular y un PIN de 4 dígitos. Sin contraseñas largas que olvidar." },
   { icon: BadgeCheck, title: "Todo bajo control", text: "El dueño ve pedidos, repartidores y pagos validados en un solo panel." },
 ];
 
@@ -31,13 +31,21 @@ export default function Home() {
               Pide en segundos, sigue al repartidor en el mapa y paga al recibir. Para negocios: gestiona todo tu
               reparto desde el celular.
             </p>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <Link href="/ingresar?next=/cliente" className="btn-gas">
+            <div className="mt-7">
+              <Link href="/ingresar?next=/cliente" className="btn-gas w-full sm:w-auto">
                 <Flame className="h-5 w-5" /> Pedir gas o agua
               </Link>
-              <Link href="/ingresar?next=/bienvenida%3Fnegocio%3D1" className="btn-primary">
-                <Store className="h-5 w-5" /> Tengo un negocio
-              </Link>
+            </div>
+            <div className="mt-6 border-t border-slate-200 pt-5">
+              <p className="text-sm font-semibold text-slate-500">¿Trabajas con un negocio de reparto?</p>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:max-w-md">
+                <Link href="/ingresar?rol=dueno" className="btn-outline px-3 text-sm sm:text-base">
+                  <Store className="h-5 w-5 text-agua-600" /> Soy dueño
+                </Link>
+                <Link href="/ingresar?rol=repartidor" className="btn-outline px-3 text-sm sm:text-base">
+                  <Bike className="h-5 w-5 text-agua-600" /> Soy repartidor
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -77,6 +85,13 @@ export default function Home() {
             </div>
           ))}
         </section>
+
+        <footer className="mt-14 flex items-center justify-between border-t border-slate-200 pt-6 text-sm text-slate-500">
+          <p>© AguaGasExpress</p>
+          <Link href="/ingresar?rol=admin" className="font-semibold hover:text-slate-800">
+            Administrador
+          </Link>
+        </footer>
       </div>
     </main>
   );

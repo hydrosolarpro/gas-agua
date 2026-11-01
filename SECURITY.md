@@ -38,3 +38,12 @@ Comprobar a mano: `npm run check:secrets`.
 - Límite de registros por IP (anti-spam) y CAPTCHA en el registro.
 - Activar *secret scanning* y *push protection* de GitHub (gratis en repos públicos; en privados requiere GitHub Advanced Security).
 - Servidor de rutas y de direcciones propio (hoy se usan los públicos de OSRM y Nominatim, con límites de uso).
+
+## Administrador, invitaciones y cobros
+
+- **Un solo administrador.** Su celular está reservado (ADMIN_PHONE): nadie más puede registrarlo por las rutas públicas. Se activa una vez en /activar-admin con el código secreto `ADMIN_SETUP_CODE` (solo servidor) y un PIN que elige la propia persona; después ese código ya no sirve.
+- **is_admin no es editable por nadie desde la app.** Solo lo escribe el servidor con la clave de servicio. Las funciones del administrador (dmin_*, eview_subscription_payment) comprueban is_admin() dentro de la base de datos.
+- **Los negocios solo se crean por invitación.** create_business ya no es ejecutable por usuarios; la única vía es dmin_create_business, accesible únicamente con la clave de servicio, tras validar una invitación.
+- **Invitaciones:** el enlace tiene 256 bits de azar, vence (7 a 30 días), se usa una sola vez (se reclama de forma atómica) y en la base solo se guarda su hash SHA-256.
+- **Eliminar un dueño** exige ser administrador (verificado en el servidor) y escribir el nombre del negocio; borra en cascada negocio, pedidos, pagos y repartidores propios.
+- **Datos de cobro:** solo los ven el administrador y los dueños (RLS). Un dueño no puede ver pagos de otros, validarse su propio pago ni cambiar su monto.
