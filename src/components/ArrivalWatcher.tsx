@@ -28,6 +28,7 @@ export function ArrivalWatcher() {
         .select("id, code, driver_id, lat, lng")
         .eq("customer_id", u.user.id)
         .eq("status", "en_camino")
+        .in("payment_status", ["pendiente", "rechazado"])
         .not("driver_id", "is", null)
         .order("created_at", { ascending: false })
         .limit(1)

@@ -65,13 +65,21 @@ export default function SeguimientoPage() {
   const payNumber =
     order.payment_method === "yape" ? business?.yape_number : order.payment_method === "plin" ? business?.plin_number : order.payment_method === "otro" ? business?.other_pay_value : null;
 
-  const headline = {
+  const base = {
     pendiente: { title: "Buscando repartidor…", text: `${business?.name ?? "El negocio"} está revisando tu pedido.` },
     aceptado: { title: "¡Pedido aceptado!", text: `${driver?.full_name ?? "Tu repartidor"} está preparando tu pedido.` },
     en_camino: { title: route ? `Llega en ${formatEta(route.durationS)}` : "¡Va en camino!", text: route ? `A ${formatDistance(route.distanceM)} de tu puerta` : `${driver?.full_name ?? "Tu repartidor"} ya salió hacia tu dirección.` },
     entregado: { title: "¡Entregado!", text: "Gracias por tu pedido." },
     cancelado: { title: "Pedido cancelado", text: order.cancel_reason ?? "" },
   }[order.status];
+  const headline =
+    order.status === "en_camino" && order.payment_status === "reportado"
+      ? { title: "Validando tu pago…", text: "El negocio está confirmando tu pago. Apenas lo valide, tu pedido queda entregado." }
+      : order.status === "en_camino" && order.payment_status === "rechazado"
+        ? { title: "No pudimos confirmar tu pago", text: "Vuelve a enviar tu comprobante o paga directamente al repartidor." }
+        : base;
+  // El pago se muestra cuando llega el repartidor y se mantiene mientras se valida.
+  const showPay = arrived || order.payment_status !== "pendiente" || order.status === "entregado";
 
   return (
     <div className="min-h-dvh pb-8">
@@ -122,20 +130,20 @@ export default function SeguimientoPage() {
         <section className="card space-y-3 p-5">
           <div className="flex items-center justify-between">
             <h2 className="font-bold">Pago contra-entrega</h2>
-            {order.status === "entregado" ? <PayBadge status={order.payment_status} /> : <MethodBadge method={order.payment_method} />}
+            {order.payment_status !== "pendiente" ? <PayBadge status={order.payment_status} /> : <MethodBadge method={order.payment_method} />}
           </div>
           <p className="text-3xl font-extrabold">{money(order.total)}</p>
-          {order.status !== "cancelado" && order.status !== "entregado" && !arrived && (
+          {order.status !== "cancelado" && order.status !== "entregado" && !showPay && (
             <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
               Pagarás cuando tu repartidor llegue. Te avisaremos aquí y te mostraremos los datos para pagar.
             </p>
           )}
-          {arrived && order.status !== "entregado" && order.status !== "cancelado" && (
+          {arrived && order.payment_status === "pendiente" && order.status !== "entregado" && order.status !== "cancelado" && (
             <p className="rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
               ¡Tu repartidor llegó! {order.payment_method === "efectivo" ? "Entrégale el pago en efectivo." : "Paga ahora con los datos de abajo y sube tu captura."}
             </p>
           )}
-          {payNumber && (arrived || order.status === "entregado") && order.payment_status !== "validado" && (
+          {payNumber && showPay && order.payment_status !== "validado" && (
             <CopyField
               label={order.payment_method === "otro" ? `Paga a: ${business?.other_pay_name ?? "otra plataforma"}` : `Paga por ${order.payment_method === "yape" ? "Yape" : "Plin"} al número`}
               value={payNumber}
@@ -149,7 +157,7 @@ export default function SeguimientoPage() {
           )}
         </section>
 
-        {(arrived || order.status === "entregado") && order.status !== "cancelado" && order.payment_method !== "efectivo" && <OrderProofsClient order={order} />}
+        {showPay && order.status !== "cancelado" && order.payment_method !== "efectivo" && <OrderProofsClient order={order} />}
 
         <section className="card space-y-3 p-5">
           <h2 className="font-bold">Detalle</h2>

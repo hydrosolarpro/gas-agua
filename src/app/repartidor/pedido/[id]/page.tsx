@@ -142,7 +142,7 @@ export default function EntregaPage() {
             {busy ? <Spinner className="h-5 w-5" /> : <Bike className="h-5 w-5" />} Salir a entregar
           </button>
         )}
-        {(order.status === "aceptado" || order.status === "en_camino") && mine && (
+        {(order.status === "aceptado" || order.status === "en_camino") && mine && order.payment_status !== "reportado" && (
           <button
             onClick={() => {
               setMethod(order.payment_method === "otro" ? "efectivo" : order.payment_method);
@@ -152,12 +152,17 @@ export default function EntregaPage() {
             }}
             className="btn-success w-full text-lg"
           >
-            <CircleCheck className="h-6 w-6" /> Entregué el pedido
+            <CircleCheck className="h-6 w-6" /> Entregué y cobré
           </button>
+        )}
+        {order.status === "en_camino" && order.payment_status === "reportado" && (
+          <p className="rounded-2xl bg-orange-50 p-4 text-center font-semibold text-orange-800">
+            Cobro de {money(order.amount_received ?? total)} registrado. Cuando el negocio lo valide, el pedido queda entregado.
+          </p>
         )}
         {order.status === "entregado" && (
           <p className="rounded-2xl bg-emerald-50 p-4 text-center font-semibold text-emerald-800">
-            Entrega registrada. El dueño validará tu cobro de {money(order.amount_received ?? total)}.
+            Pedido entregado y pago validado. ¡Buen trabajo!
           </p>
         )}
       </main>
@@ -201,7 +206,7 @@ export default function EntregaPage() {
         )}
         <ErrorText>{error}</ErrorText>
         <button onClick={confirmDelivery} disabled={busy} className="btn-success mt-5 w-full text-lg">
-          {busy && <Spinner className="h-5 w-5" />} Confirmar entrega y cobro
+          {busy && <Spinner className="h-5 w-5" />} Confirmar cobro
         </button>
       </Sheet>
     </div>

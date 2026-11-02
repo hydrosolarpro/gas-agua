@@ -60,7 +60,7 @@ function Resumen() {
     const delivered = list.filter((o) => o.status === "entregado");
     const sum = (arr: typeof list) => arr.reduce((s, o) => s + Number(o.total), 0);
     const validated = delivered.filter((o) => o.payment_status === "validado");
-    const pending = delivered.filter((o) => o.payment_status === "reportado");
+    const pending = list.filter((o) => o.payment_status === "reportado" && (o.status === "en_camino" || o.status === "entregado"));
     const byMethod = (["yape", "plin", "efectivo"] as PaymentMethod[]).map((m) => ({
       m,
       amount: sum(validated.filter((o) => o.payment_method === m)),
@@ -79,7 +79,7 @@ function Resumen() {
   if (!orders) return <FullLoader />;
 
   const activeOrders = orders.filter((o) => ACTIVE_STATUSES.includes(o.status));
-  const needsValidation = orders.filter((o) => o.status === "entregado" && o.payment_status === "reportado");
+  const needsValidation = orders.filter((o) => o.payment_status === "reportado" && (o.status === "en_camino" || o.status === "entregado"));
   const markers: MapMarker[] = [
     ...activeOrders.map((o, i) => ({ id: o.id, kind: "pedido" as const, position: { lat: o.lat, lng: o.lng }, label: String(i + 1) })),
     ...locations.map((l) => ({

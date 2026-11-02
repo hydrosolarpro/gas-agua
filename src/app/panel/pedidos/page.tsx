@@ -30,7 +30,7 @@ function matches(o: Order, f: Filter) {
   switch (f) {
     case "nuevos": return o.status === "pendiente";
     case "curso": return o.status === "aceptado" || o.status === "en_camino";
-    case "validar": return o.status === "entregado" && o.payment_status === "reportado";
+    case "validar": return o.payment_status === "reportado" && (o.status === "en_camino" || o.status === "entregado");
     case "entregados": return o.status === "entregado";
     case "cancelados": return o.status === "cancelado";
     default: return true;
@@ -60,7 +60,7 @@ function OrderDetail({ order, onChanged }: { order: Order; onChanged: () => void
       <div className="flex flex-wrap items-center gap-2">
         <StatusBadge status={order.status} />
         <MethodBadge method={order.payment_method} />
-        {order.status === "entregado" && <PayBadge status={order.payment_status} />}
+        {order.payment_status !== "pendiente" && <PayBadge status={order.payment_status} />}
         <span className="ml-auto text-xs text-slate-500">{dateTime(order.created_at)}</span>
       </div>
 
@@ -92,14 +92,20 @@ function OrderDetail({ order, onChanged }: { order: Order; onChanged: () => void
       <OrderItems order={order} />
       <OrderProofsOwner order={order} />
 
-      {order.status === "entregado" && (
+      {order.status !== "cancelado" && (order.status === "entregado" || order.payment_status === "reportado" || order.payment_status === "rechazado") && (
         <div className="rounded-2xl border-2 border-orange-200 bg-orange-50 p-4">
-          <p className="font-bold text-orange-900">Cobro registrado por {driverName ?? "el repartidor"}</p>
+          <p className="font-bold text-orange-900">Pago informado · {driverName ?? "repartidor"}</p>
           <p className="text-2xl font-extrabold">{money(order.amount_received ?? order.total)}</p>
           <p className="text-sm text-orange-900/80">
             {order.payment_method === "efectivo" ? "Recibe el efectivo del repartidor y confirma." : "Revisa tu app de Yape/Plin y confirma que el pago llegó."}
             {order.operation_code ? ` · Operación ${order.operation_code}` : ""}
           </p>
+          {order.payment_status === "reportado" && order.status !== "entregado" && (
+            <p className="mt-1 text-sm font-semibold text-orange-900">Al validar, el pedido se marca como entregado automáticamente.</p>
+          )}
+          {order.payment_status === "rechazado" && order.status !== "entregado" && (
+            <p className="mt-1 text-sm font-semibold text-rose-700">Marcaste que el pago no llegó. Esperando un nuevo cobro o comprobante.</p>
+          )}
           {order.payment_status === "reportado" && (
             <div className="mt-3 grid grid-cols-2 gap-3">
               <button onClick={() => run("ok", "validate_payment", { p_order_id: order.id, p_valid: true })} disabled={busy !== null} className="btn-success">
