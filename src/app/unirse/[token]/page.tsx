@@ -24,6 +24,7 @@ export default function Unirse() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [existing, setExisting] = useState(false);
+  const [linked, setLinked] = useState(false);
 
   useEffect(() => {
     fetch(`/api/customers/check?token=${encodeURIComponent(token)}`)
@@ -37,6 +38,21 @@ export default function Unirse() {
     setError("");
     setExisting(await phoneExists(token, "cliente", phone));
     setStep("pin");
+  }
+
+  // Para quien no recuerda el PIN de su cuenta: solo queda anotado como cliente de este negocio, sin iniciar sesión.
+  async function linkOnly() {
+    setBusy(true);
+    setError("");
+    const res = await fetch("/api/customers/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, fullName, phone, soloVincular: true }),
+    });
+    const data = await res.json();
+    setBusy(false);
+    if (!res.ok) return setError(data.error ?? "No se pudo completar el registro");
+    setLinked(true);
   }
 
   async function submit(confirm: string, pinValue = pin) {
@@ -74,6 +90,23 @@ export default function Unirse() {
   }
 
   if (!check) return <FullLoader />;
+
+  if (linked) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-agua-50 to-white px-5 py-8">
+        <Logo />
+        <div className="card mt-8 w-full max-w-md space-y-4 p-6 text-center">
+          <h1 className="text-2xl font-extrabold">¡Listo!</h1>
+          <p className="text-slate-600">
+            El celular <b>{phone}</b> quedó registrado como cliente de <b>{check.business}</b>. Entra con tu PIN de siempre para pedir.
+          </p>
+          <Link href={`/ingresar?tel=${phone}`} className="btn-gas w-full">
+            Ingresar con mi PIN
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-agua-50 to-white px-5 py-8">
@@ -132,9 +165,14 @@ export default function Unirse() {
                   }}
                 />
                 {existing ? (
-                  <p className="rounded-2xl bg-sky-50 p-3 text-center text-sm text-sky-900">
-                    Este celular <b>ya tiene cuenta</b>. Escribe el PIN que usas siempre y quedarás registrado también como cliente de este negocio.
-                  </p>
+                  <div className="space-y-2">
+                    <p className="rounded-2xl bg-sky-50 p-3 text-center text-sm text-sky-900">
+                      Este celular <b>ya tiene cuenta</b>. Escribe el PIN que usas siempre y entrarás como cliente de este negocio.
+                    </p>
+                    <button onClick={linkOnly} disabled={busy} className="btn-outline w-full text-sm">
+                      No recuerdo mi PIN: solo registrar este celular como cliente
+                    </button>
+                  </div>
                 ) : (
                   <p className="text-center text-xs text-slate-500">Elige un PIN de 4 dígitos que recuerdes.</p>
                 )}

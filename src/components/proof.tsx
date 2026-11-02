@@ -31,6 +31,75 @@ export async function uploadProof(kind: "subs" | "orders", id: string, file: Fil
   return path;
 }
 
+/** Sube varias imágenes y devuelve sus rutas en el mismo orden. */
+export async function uploadProofs(kind: "subs" | "orders", id: string, files: File[]): Promise<string[]> {
+  const paths: string[] = [];
+  for (const f of files) paths.push(await uploadProof(kind, id, f));
+  return paths;
+}
+
+/** Varias capturas o fotos del mismo pago, con vista previa y botón para agregar otra. */
+export function ProofPickerMulti({
+  files,
+  onChange,
+  max = 4,
+  label = "Comprobantes de pago",
+}: {
+  files: File[];
+  onChange: (f: File[]) => void;
+  max?: number;
+  label?: string;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [urls, setUrls] = useState<string[]>([]);
+
+  useEffect(() => {
+    const list = files.map((f) => URL.createObjectURL(f));
+    setUrls(list); // eslint-disable-line react-hooks/set-state-in-effect
+    return () => list.forEach((u) => URL.revokeObjectURL(u));
+  }, [files]);
+
+  function add(list: FileList | null) {
+    if (!list) return;
+    onChange([...files, ...Array.from(list)].slice(0, max));
+    if (input.current) input.current.value = "";
+  }
+
+  return (
+    <div>
+      <label className="label">
+        {label} <span className="font-normal text-slate-400">({files.length}/{max})</span>
+      </label>
+      <input ref={input} type="file" accept="image/*" multiple className="hidden" onChange={(e) => add(e.target.files)} />
+      <div className="flex flex-wrap gap-3">
+        {urls.map((u, i) => (
+          <div key={u} className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={u} alt={`Comprobante ${i + 1}`} className="h-20 w-20 rounded-xl border border-slate-200 object-cover" />
+            <button
+              type="button"
+              onClick={() => onChange(files.filter((_, j) => j !== i))}
+              className="absolute -right-2 -top-2 rounded-full bg-slate-800 p-1 text-white shadow"
+              aria-label={`Quitar imagen ${i + 1}`}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+        {files.length < max && (
+          <button
+            type="button"
+            onClick={() => input.current?.click()}
+            className="flex h-20 min-w-20 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 px-3 text-xs font-semibold text-slate-600 active:scale-95"
+          >
+            <Camera className="h-5 w-5" /> {files.length === 0 ? "Subir captura" : "Agregar otra"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Botón para elegir la captura o foto del pago, con vista previa. */
 export function ProofPicker({ file, onChange, label = "Comprobante de pago" }: { file: File | null; onChange: (f: File | null) => void; label?: string }) {
   const input = useRef<HTMLInputElement>(null);

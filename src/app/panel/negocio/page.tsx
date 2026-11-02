@@ -17,6 +17,8 @@ export default function NegocioPage() {
   const [yape, setYape] = useState(business.yape_number ?? "");
   const [plin, setPlin] = useState(business.plin_number ?? "");
   const [holder, setHolder] = useState(business.payment_holder ?? "");
+  const [otherName, setOtherName] = useState(business.other_pay_name ?? "");
+  const [otherValue, setOtherValue] = useState(business.other_pay_value ?? "");
   const [loc, setLoc] = useState<PickedLocation>({
     point: business.lat && business.lng ? { lat: business.lat, lng: business.lng } : null,
     address: business.address_text ?? "",
@@ -31,6 +33,7 @@ export default function NegocioPage() {
 
   async function save() {
     if (name.trim().length < 2) return setError("Escribe el nombre del negocio");
+    if (Boolean(otherName.trim()) !== Boolean(otherValue.trim())) return setError("Completa el nombre y el dato de la otra plataforma de pago, o deja ambos vacíos");
     setSaving(true);
     setError("");
     setMsg("");
@@ -42,6 +45,8 @@ export default function NegocioPage() {
         yape_number: yape || null,
         plin_number: plin || null,
         payment_holder: holder.trim() || null,
+        other_pay_name: otherName.trim() || null,
+        other_pay_value: otherValue.trim() || null,
         address_text: loc.address || null,
         lat: loc.point?.lat ?? null,
         lng: loc.point?.lng ?? null,
@@ -106,6 +111,16 @@ export default function NegocioPage() {
         <div>
           <label className="label">Nombre del titular (opcional)</label>
           <input className="input" value={holder} onChange={(e) => setHolder(e.target.value)} placeholder="Como aparece en Yape/Plin" />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label">Otra plataforma (opcional)</label>
+            <input className="input" maxLength={40} value={otherName} onChange={(e) => setOtherName(e.target.value)} placeholder="Ej. BCP cuenta, Interbank, Agora" />
+          </div>
+          <div>
+            <label className="label">Número o cuenta</label>
+            <input className="input" maxLength={60} value={otherValue} onChange={(e) => setOtherValue(e.target.value)} placeholder="Ej. 19498905205045" />
+          </div>
         </div>
         <p className="text-xs text-slate-500">Si dejas Yape o Plin vacío, esa opción no se ofrece a tus clientes. El efectivo siempre está disponible.</p>
       </section>

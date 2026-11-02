@@ -54,7 +54,8 @@ export default function SeguimientoPage() {
   const markers: MapMarker[] = [{ id: "destino", kind: "destino", position: { lat: order.lat, lng: order.lng }, label: "Tu dirección" }];
   if (tracking && driverPoint) markers.push({ id: "repartidor", kind: "repartidor", position: driverPoint, label: driver?.full_name ?? "Repartidor" });
 
-  const payNumber = order.payment_method === "yape" ? business?.yape_number : order.payment_method === "plin" ? business?.plin_number : null;
+  const payNumber =
+    order.payment_method === "yape" ? business?.yape_number : order.payment_method === "plin" ? business?.plin_number : order.payment_method === "otro" ? business?.other_pay_value : null;
 
   const headline = {
     pendiente: { title: "Buscando repartidor…", text: `${business?.name ?? "El negocio"} está revisando tu pedido.` },
@@ -126,7 +127,7 @@ export default function SeguimientoPage() {
               className="flex w-full items-center justify-between rounded-2xl bg-slate-50 p-4 text-left"
             >
               <span>
-                <span className="block text-xs text-slate-500">Al recibir, paga al número</span>
+                <span className="block text-xs text-slate-500">{order.payment_method === "otro" ? `Paga a: ${business?.other_pay_name ?? "otra plataforma"}` : "Al recibir, paga al número"}</span>
                 <span className="text-lg font-bold">{payNumber}</span>
                 {business?.payment_holder && <span className="block text-xs text-slate-500">{business.payment_holder}</span>}
               </span>

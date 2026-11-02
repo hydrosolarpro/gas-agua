@@ -6,7 +6,9 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Minus, Phone, Plus, ShoppingBag } from "lucide-react";
+import { CopyField } from "@/components/CopyField";
 import { LocationPicker, type PickedLocation } from "@/components/LocationPicker";
+import { ProofPickerMulti, uploadProofs } from "@/components/proof";
 import { Empty, ErrorText, FullLoader, Spinner, TopBar } from "@/components/ui";
 import { CATEGORY, errorMessage, METHOD, money, telLink } from "@/lib/format";
 import { useSession } from "@/lib/hooks";
@@ -37,6 +39,7 @@ export default function StorePage() {
   const [cashAmount, setCashAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [sending, setSending] = useState(false);
+  const [proofFiles, setProofFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [prefilled, setPrefilled] = useState(false);
 
@@ -72,9 +75,15 @@ export default function StorePage() {
   const total = items.reduce((s, p) => s + Number(p.price) * cart[p.id], 0);
   const count = items.reduce((s, p) => s + cart[p.id], 0);
   const step: Step = count > 0 ? rawStep : "productos";
-  const methods = (["yape", "plin", "efectivo"] as PaymentMethod[]).filter(
-    (m) => m === "efectivo" || (m === "yape" ? business?.yape_number : business?.plin_number),
+  const payData: Record<"yape" | "plin" | "otro", string | null | undefined> = {
+    yape: business?.yape_number,
+    plin: business?.plin_number,
+    otro: business?.other_pay_value,
+  };
+  const methods = (["yape", "plin", "otro", "efectivo"] as PaymentMethod[]).filter(
+    (m) => m === "efectivo" || Boolean(payData[m as "yape" | "plin" | "otro"]),
   );
+  const methodLabel = (m: PaymentMethod) => (m === "otro" ? business?.other_pay_name || "Otra" : METHOD[m].label);
 
   const setQty = (id: string, delta: number) =>
     setCart((c) => {
@@ -129,7 +138,24 @@ export default function StorePage() {
     try {
       sessionStorage.removeItem(`cart:${slug}`);
     } catch {}
-    router.replace(`/cliente/pedido/${(data as { id: string }).id}?nuevo=1`);
+    const orderId = (data as { id: string }).id;
+    // Si ya pagó y subió la captura, la enviamos al dueño junto con el pedido. Si falla, la puede subir después en el seguimiento.
+    if (proofFiles.length > 0 && method !== "efectivo") {
+      try {
+        const cats = new Set(items.map((p) => p.category));
+        const [first, ...rest] = await uploadProofs("orders", orderId, proofFiles);
+        await supabaseBrowser().rpc("add_order_proof", {
+          p_order_id: orderId,
+          p_concept: cats.size === 1 ? [...cats][0] : "otro",
+          p_amount: total,
+          p_method: method === "otro" ? "otro" : method,
+          p_code: null,
+          p_proof: first,
+          p_extra: rest,
+        });
+      } catch {}
+    }
+    router.replace(`/cliente/pedido/${orderId}?nuevo=1`);
   }
 
   if (business === undefined || sessionLoading) return <FullLoader />;
@@ -229,7 +255,7 @@ export default function StorePage() {
 
             <section>
               <h2 className="mb-3 font-bold">Pagas al recibir con…</h2>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(methods.length, 3)}, minmax(0, 1fr))` }}>
                 {methods.map((m) => (
                   <button
                     key={m}
@@ -238,7 +264,7 @@ export default function StorePage() {
                     style={method === m ? { background: METHOD[m].color } : undefined}
                   >
                     <MethodMark method={m} className="mx-auto h-10 w-10 text-lg" />
-                    <p className="mt-1 font-bold">{METHOD[m].label}</p>
+                    <p className="mt-1 truncate font-bold">{methodLabel(m)}</p>
                   </button>
                 ))}
               </div>
@@ -248,11 +274,18 @@ export default function StorePage() {
                   <input className="input" inputMode="decimal" placeholder={`Ej. ${Math.ceil(total / 10) * 10 || 50}`} value={cashAmount} onChange={(e) => setCashAmount(e.target.value.replace(/[^\d.]/g, ""))} />
                 </div>
               )}
-              {(method === "yape" || method === "plin") && (
-                <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
-                  Al recibir, yapea/plinea al <b>{method === "yape" ? business.yape_number : business.plin_number}</b>
-                  {business.payment_holder ? ` (${business.payment_holder})` : ""} y muestra la confirmación al repartidor.
-                </p>
+              {(method === "yape" || method === "plin" || method === "otro") && (
+                <div className="mt-4 space-y-3">
+                  <CopyField
+                    label={method === "otro" ? `Paga a: ${business.other_pay_name}` : `Paga por ${METHOD[method].label} al número`}
+                    value={(method === "yape" ? business.yape_number : method === "plin" ? business.plin_number : business.other_pay_value) ?? ""}
+                    hint={business.payment_holder ? `Titular: ${business.payment_holder}` : undefined}
+                  />
+                  <p className="text-sm text-slate-600">
+                    Puedes pagar ahora y subir tu captura, o pagar al recibir y mostrar la confirmación al repartidor.
+                  </p>
+                  <ProofPickerMulti files={proofFiles} onChange={setProofFiles} label="Capturas de tu pago (opcional)" />
+                </div>
               )}
             </section>
             <div>

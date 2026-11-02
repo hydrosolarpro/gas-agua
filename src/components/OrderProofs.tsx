@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
-import { ProofPicker, ProofView, uploadProof } from "@/components/proof";
+import { ProofPickerMulti, ProofView, uploadProofs } from "@/components/proof";
 import { ErrorText, Sheet, Spinner } from "@/components/ui";
 import { dateTime, errorMessage, money } from "@/lib/format";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Order, OrderProof } from "@/lib/types";
 
 type Concept = OrderProof["concept"];
-const CONCEPT_NAME: Record<Concept, string> = { gas: "Gas", agua: "Agua", otro: "Otros" };
+const CONCEPT_NAME: Record<Concept, string> = { gas: "Gas", agua: "Agua", otro: "Pedido completo" };
 const METHODS: { id: OrderProof["method"]; label: string }[] = [
   { id: "yape", label: "Yape" },
   { id: "plin", label: "Plin" },
@@ -61,7 +61,11 @@ function ProofList({ proofs, order }: { proofs: OrderProof[]; order: Order }) {
             {mine.length === 0 && <p className="text-sm text-slate-500">Aún sin comprobante.</p>}
             {mine.map((p) => (
               <div key={p.id} className="flex items-center gap-3">
-                <ProofView path={p.proof_path} caption={`${CONCEPT_NAME[c]} · ${money(p.amount)}`} />
+                <div className="flex shrink-0 flex-wrap gap-1.5">
+                  {[p.proof_path, ...(p.extra_paths ?? [])].map((path) => (
+                    <ProofView key={path} path={path} caption={`${CONCEPT_NAME[c]} · ${money(p.amount)}`} />
+                  ))}
+                </div>
                 <div className="min-w-0 text-sm">
                   <p className="font-bold">{money(p.amount)}</p>
                   <p className="text-slate-500 capitalize">
@@ -101,7 +105,7 @@ export function OrderProofsClient({ order }: { order: Order }) {
   const [method, setMethod] = useState<OrderProof["method"]>(order.payment_method === "plin" ? "plin" : "yape");
   const [amount, setAmount] = useState("");
   const [code, setCode] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -114,7 +118,7 @@ export function OrderProofsClient({ order }: { order: Order }) {
     setConcept(c);
     setAmount(left > 0 ? String(left) : "");
     setCode("");
-    setFile(null);
+    setFiles([]);
     setError("");
     setOpen(true);
   }
@@ -122,18 +126,19 @@ export function OrderProofsClient({ order }: { order: Order }) {
   async function save() {
     const value = Number(amount);
     if (!(value > 0)) return setError("Escribe el monto que pagaste");
-    if (!file) return setError("Sube la captura o foto de tu pago");
+    if (files.length === 0) return setError("Sube la captura o foto de tu pago");
     setSaving(true);
     setError("");
     try {
-      const path = await uploadProof("orders", order.id, file);
+      const [first, ...rest] = await uploadProofs("orders", order.id, files);
       const { error: e } = await supabaseBrowser().rpc("add_order_proof", {
         p_order_id: order.id,
         p_concept: concept,
         p_amount: value,
         p_method: method,
         p_code: code || null,
-        p_proof: path,
+        p_proof: first,
+        p_extra: rest,
       });
       if (e) throw new Error(errorMessage(e));
       setOpen(false);
@@ -205,7 +210,7 @@ export function OrderProofsClient({ order }: { order: Order }) {
             <label className="label">Código de operación (opcional)</label>
             <input className="input" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej. 4821937" />
           </div>
-          <ProofPicker file={file} onChange={setFile} />
+          <ProofPickerMulti files={files} onChange={setFiles} />
           <ErrorText>{error}</ErrorText>
           <button onClick={save} disabled={saving} className="btn-primary w-full">
             {saving && <Spinner className="h-5 w-5" />} Enviar comprobante

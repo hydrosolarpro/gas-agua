@@ -55,3 +55,4 @@ Comprobar a mano: `npm run check:secrets`.
 - **Consulta de celular en invitaciones.** `/api/invite/phone` solo responde con un enlace de invitación vigente, y únicamente dice si el celular ya tiene cuenta con PIN (para pedir el PIN de siempre).
 - **Eliminar dueño.** Borra también sus comprobantes del almacenamiento; el vínculo `payment_validated_by` pasó a `on delete set null` (antes podía impedir el borrado).
 - **Estadísticas.** Los pedidos cancelados se conservan con motivo, fecha y quién los canceló (`cancelled_by`); el dueño solo ve los de su negocio. El PDF se genera en el navegador del dueño, sin enviar datos a terceros.
+- **Pagos con varias imágenes y otra plataforma.** Un pago del cliente admite hasta 4 imágenes (todas validadas por ruta del pedido). Un celular con cuenta puede anotarse como cliente de un negocio sin PIN, pero sin iniciar sesión ni modificar la cuenta; para entrar siempre se exige el PIN.

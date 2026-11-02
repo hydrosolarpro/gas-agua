@@ -62,6 +62,8 @@ export type Business = {
   phone: string | null;
   yape_number: string | null;
   plin_number: string | null;
+  other_pay_name?: string | null;
+  other_pay_value?: string | null;
   payment_holder: string | null;
   address_text: string | null;
   lat: number | null;
@@ -142,5 +144,6 @@ export type OrderProof = {
   amount: number;
   operation_code: string | null;
   proof_path: string;
+  extra_paths: string[];
   created_at: string;
 };
