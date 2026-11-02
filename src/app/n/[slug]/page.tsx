@@ -82,9 +82,14 @@ export default function StorePage() {
   );
   const methodLabel = (m: PaymentMethod) => (m === "otro" ? business?.other_pay_name || "Otra" : METHOD[m].label);
 
+  const maxFor = (id: string) => {
+    const p = products.find((x) => x.id === id);
+    return p?.stock == null ? 20 : Math.min(20, p.stock);
+  };
+
   const setQty = (id: string, delta: number) =>
     setCart((c) => {
-      const next = { ...c, [id]: Math.max(0, Math.min(20, (c[id] ?? 0) + delta)) };
+      const next = { ...c, [id]: Math.max(0, Math.min(maxFor(id), (c[id] ?? 0) + delta)) };
       try {
         sessionStorage.setItem(`cart:${slug}`, JSON.stringify(next));
       } catch {}
@@ -152,7 +157,7 @@ export default function StorePage() {
     .filter((g) => g.list.length > 0);
 
   return (
-    <div className="min-h-dvh pb-32">
+    <div className="flex h-full flex-col">
       <TopBar
         title={step === "productos" ? business.name : step === "ubicacion" ? "¿Dónde entregamos?" : "¿Cómo pagas?"}
         back={step === "productos" ? (user ? "/cliente" : "/") : undefined}
@@ -165,10 +170,10 @@ export default function StorePage() {
         }
       />
 
-      <main className="mx-auto max-w-lg space-y-5 p-4">
+      <main className="mx-auto min-h-0 w-full max-w-3xl flex-1 space-y-3 overflow-y-auto p-3 md:p-5">
         {step === "productos" && (
           <>
-            <section className="rounded-3xl bg-gradient-to-br from-agua-600 to-agua-500 p-5 text-white shadow-lg">
+            <section className="rounded-3xl bg-gradient-to-br from-agua-600 to-agua-500 p-4 text-white shadow-lg [@media(max-height:800px)]:hidden">
               <p className="text-sm opacity-90">Pide y paga al recibir</p>
               <p className="text-2xl font-extrabold">{business.name}</p>
               <p className="mt-2 text-sm opacity-90">Yape · Plin · Efectivo contra-entrega</p>
@@ -176,12 +181,12 @@ export default function StorePage() {
             {grouped.length === 0 && <Empty icon={<Package className="h-12 w-12 text-slate-300" />} title="Sin productos por ahora" />}
             {grouped.map(({ cat, list }) => (
               <section key={cat}>
-                <h2 className="mb-3 text-lg font-bold">
+                <h2 className="mb-2 text-lg font-bold">
                   <span className="inline-flex items-center gap-2"><CategoryIcon category={cat} className="h-5 w-5" />{CATEGORY[cat].label}</span>
                 </h2>
-                <div className="space-y-3">
+                <div className="grid gap-2 md:grid-cols-2">
                   {list.map((p) => (
-                    <div key={p.id} className="card flex items-center gap-4 p-4">
+                    <div key={p.id} className="card flex items-center gap-3 p-3">
                       <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-3xl ${p.category === "gas" ? "bg-gas-50" : "bg-agua-50"}`}>
                         <CategoryIcon category={p.category} className={`h-7 w-7 ${p.category === "gas" ? "text-gas-600" : "text-agua-600"}`} />
                       </div>
@@ -189,6 +194,7 @@ export default function StorePage() {
                         <p className="font-bold leading-tight">{p.name}</p>
                         {p.description && <p className="truncate text-xs text-slate-500">{p.description}</p>}
                         <p className="mt-1 font-extrabold text-agua-700">{money(p.price)}</p>
+                        {p.stock !== null && p.stock > 0 && p.stock <= 5 && <p className="text-xs font-semibold text-orange-700">Quedan {p.stock}</p>}
                       </div>
                       {cart[p.id] ? (
                         <div className="flex items-center gap-2">
@@ -196,14 +202,18 @@ export default function StorePage() {
                             <Minus className="h-4 w-4" />
                           </button>
                           <span className="w-6 text-center text-lg font-bold">{cart[p.id]}</span>
-                          <button onClick={() => setQty(p.id, 1)} className="rounded-full bg-agua-600 p-2 text-white" aria-label="Agregar uno">
+                          <button onClick={() => setQty(p.id, 1)} disabled={cart[p.id] >= maxFor(p.id)} className="rounded-full bg-agua-600 p-2 text-white disabled:opacity-40" aria-label="Agregar uno">
                             <Plus className="h-4 w-4" />
                           </button>
                         </div>
                       ) : (
-                        <button onClick={() => setQty(p.id, 1)} className="btn-ghost px-4 py-2 text-sm">
-                          Agregar
-                        </button>
+                        p.stock === 0 ? (
+                          <span className="chip bg-slate-200 text-slate-600">Agotado</span>
+                        ) : (
+                          <button onClick={() => setQty(p.id, 1)} className="btn-ghost px-4 py-2 text-sm">
+                            Agregar
+                          </button>
+                        )
                       )}
                     </div>
                   ))}
@@ -272,7 +282,7 @@ export default function StorePage() {
       </main>
 
       {count > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 p-4 backdrop-blur">
+        <div className="shrink-0 border-t border-slate-200 bg-white p-3">
           <div className="mx-auto flex max-w-lg items-center gap-3">
             {step !== "productos" && (
               <button

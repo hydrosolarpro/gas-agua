@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import { LayoutDashboard, Landmark, UserPlus, UserRound, Wallet } from "lucide-react";
 import { Store } from "@/components/icons";
 import { AdminCtx, useAdminData } from "@/components/admin-context";
+import { AdminAlerts } from "@/components/alerts";
 import { InviteSheet } from "@/components/admin-sheets";
 import { FullLoader, Logo } from "@/components/ui";
 import { useSession } from "@/lib/hooks";
@@ -29,8 +30,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <AdminCtx.Provider value={{ ...data, openInvite: () => setInviteOpen(true) }}>
-      <div className="min-h-dvh md:flex">
-        <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-slate-200 bg-white p-5 md:flex">
+      <AdminAlerts />
+      <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
+        <aside className="hidden h-full w-56 shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white p-4 md:flex lg:w-60">
           <Logo size="sm" />
           <p className="mt-3 rounded-2xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white">Administrador</p>
           <button onClick={() => setInviteOpen(true)} className="btn-gas mt-4 w-full py-3 text-sm">
@@ -52,8 +54,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </Link>
         </aside>
 
-        <div className="min-w-0 flex-1 pb-24 md:pb-8">
-          <header className="flex items-center justify-between gap-3 bg-white px-4 py-3 shadow-sm md:hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <header className="flex shrink-0 items-center justify-between gap-3 bg-white px-4 py-2 shadow-sm md:hidden">
             <Logo size="sm" />
             <div className="flex items-center gap-2">
               <button onClick={() => setInviteOpen(true)} className="btn-gas px-4 py-2 text-sm">
@@ -64,10 +66,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </Link>
             </div>
           </header>
-          {children}
-        </div>
-
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
+        <nav className="grid shrink-0 grid-cols-4 border-t border-slate-200 bg-white md:hidden">
           {NAV.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
@@ -78,6 +78,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
+        </div>
       </div>
       <InviteSheet open={inviteOpen} onClose={() => setInviteOpen(false)} />
     </AdminCtx.Provider>

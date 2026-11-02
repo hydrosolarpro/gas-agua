@@ -11,62 +11,60 @@ const FEATURES = [
   { icon: BadgeCheck, title: "Todo bajo control", text: "El dueño ve pedidos, repartidores y pagos validados en un solo panel." },
 ];
 
+// La portada cabe en una sola pantalla: el espacio se reparte según el alto disponible.
 export default function Home() {
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-agua-50 via-white to-gas-50">
-      <div className="mx-auto flex max-w-5xl flex-col px-5 pb-16">
-        <header className="flex items-center justify-between py-5">
+    <main className="h-full bg-gradient-to-b from-agua-50 via-white to-gas-50">
+      <div className="mx-auto flex h-full max-w-6xl flex-col px-5">
+        <header className="flex shrink-0 items-center justify-between py-[clamp(0.4rem,1.6dvh,1.25rem)]">
           <Logo />
+          <Link href="/ingresar?rol=admin" className="text-xs font-semibold text-slate-400 hover:text-slate-700">
+            Administrador
+          </Link>
         </header>
 
-        <section className="grid items-center gap-10 pt-6 md:grid-cols-2 md:pt-14">
+        <section className="grid min-h-0 flex-1 content-center items-center gap-[clamp(0.6rem,2.4dvh,2.5rem)] overflow-hidden md:grid-cols-2">
           <div>
-            <h1 className="text-4xl font-extrabold leading-tight tracking-tight md:text-5xl">
-              Tu <span className="text-gas-500">gas</span> y tu <span className="text-agua-600">agua</span>, a la puerta y
-              en minutos.
+            <h1 className="text-[clamp(1.5rem,4.6dvh,3rem)] font-extrabold leading-[1.1] tracking-tight">
+              Tu <span className="text-gas-500">gas</span> y tu <span className="text-agua-600">agua</span>, a la puerta y en minutos.
             </h1>
-            <p className="mt-4 text-lg text-slate-600">
+            <p className="mt-[clamp(0.3rem,1.2dvh,1rem)] text-[clamp(0.85rem,1.9dvh,1.125rem)] text-slate-600">
               Pide en minutos, sigue al repartidor en el mapa y paga al recibir. Gestiona todo tu reparto desde tu teléfono.
             </p>
-            <div className="mt-7">
-              <Link href="/ingresar?next=/cliente" className="btn-gas w-full sm:w-auto">
+            <div className="mt-[clamp(0.5rem,1.8dvh,1.75rem)]">
+              <Link href="/ingresar?next=/cliente" className="btn-gas w-full !py-[clamp(0.6rem,1.8dvh,0.875rem)] sm:w-auto">
                 <Flame className="h-5 w-5" /> Pedir gas o agua
               </Link>
             </div>
-            <div className="mt-6 border-t border-slate-200 pt-5">
+            <div className="mt-[clamp(0.5rem,1.6dvh,1.5rem)] border-t border-slate-200 pt-[clamp(0.4rem,1.4dvh,1.25rem)]">
               <p className="text-sm font-semibold text-slate-500">¿Trabajas con un negocio de reparto?</p>
-              <div className="mt-3 grid grid-cols-2 gap-3 sm:max-w-md">
-                <Link href="/ingresar?rol=dueno" className="btn-outline px-3 text-sm sm:text-base">
+              <div className="mt-[clamp(0.3rem,1dvh,0.75rem)] grid grid-cols-2 gap-3 sm:max-w-md">
+                <Link href="/ingresar?rol=dueno" className="btn-outline !py-[clamp(0.5rem,1.5dvh,0.875rem)] px-3 text-sm sm:text-base">
                   <Store className="h-5 w-5 text-agua-600" /> Soy dueño
                 </Link>
-                <Link href="/ingresar?rol=repartidor" className="btn-outline px-3 text-sm sm:text-base">
+                <Link href="/ingresar?rol=repartidor" className="btn-outline !py-[clamp(0.5rem,1.5dvh,0.875rem)] px-3 text-sm sm:text-base">
                   <Bike className="h-5 w-5 text-agua-600" /> Soy repartidor
                 </Link>
               </div>
             </div>
           </div>
 
-          <LiveMapDemo />
+          <div className="max-md:[@media(max-height:820px)]:hidden">
+            <LiveMapDemo />
+          </div>
         </section>
 
-        <section className="mt-16 grid gap-x-10 gap-y-6 border-t border-slate-200 pt-10 sm:grid-cols-2">
+        <section className="grid shrink-0 grid-cols-2 gap-x-6 gap-y-2 border-t border-slate-200 py-[clamp(0.4rem,1.6dvh,1.25rem)] md:grid-cols-4">
           {FEATURES.map(({ icon: Icon, title, text }) => (
-            <div key={title} className="flex gap-4">
-              <Icon className="mt-0.5 h-6 w-6 shrink-0 text-agua-600" />
-              <div>
-                <p className="font-bold">{title}</p>
-                <p className="mt-1 text-slate-600">{text}</p>
+            <div key={title} className="flex gap-2.5">
+              <Icon className="mt-0.5 h-5 w-5 shrink-0 text-agua-600" />
+              <div className="min-w-0">
+                <p className="text-sm font-bold leading-tight">{title}</p>
+                <p className="mt-0.5 hidden text-xs text-slate-600 md:block">{text}</p>
               </div>
             </div>
           ))}
         </section>
-
-        <footer className="mt-14 flex items-center justify-between border-t border-slate-200 pt-6 text-sm text-slate-500">
-          <p>© AguaGasExpress</p>
-          <Link href="/ingresar?rol=admin" className="font-semibold hover:text-slate-800">
-            Administrador
-          </Link>
-        </footer>
       </div>
     </main>
   );

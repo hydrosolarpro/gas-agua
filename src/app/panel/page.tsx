@@ -16,11 +16,13 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import type { DriverLocation, PaymentMethod } from "@/lib/types";
 import { usePanel } from "@/components/panel-context";
 
+type Tab = "pedidos" | "mapa" | "ingresos" | "soporte";
+
 function Kpi({ label, value, tone, sub, className = "" }: { label: string; value: string; tone: string; sub?: string; className?: string }) {
   return (
-    <div className={`card p-4 ${className}`}>
-      <p className="text-xs font-semibold text-slate-500">{label}</p>
-      <p className={`mt-1 text-2xl font-extrabold ${tone}`}>{value}</p>
+    <div className={`card min-w-[7rem] shrink-0 px-3 py-2.5 sm:min-w-0 md:p-4 ${className}`}>
+      <p className="truncate text-[11px] font-semibold text-slate-500 md:text-xs">{label}</p>
+      <p className={`mt-0.5 truncate text-lg font-extrabold md:text-2xl ${tone}`}>{value}</p>
       {sub && <p className="text-xs text-slate-500">{sub}</p>}
     </div>
   );
@@ -33,6 +35,7 @@ function Resumen() {
   const { drivers } = useDrivers(business.id);
   const [locations, setLocations] = useState<DriverLocation[]>([]);
   const [copied, setCopied] = useState(false);
+  const [tab, setTab] = useState<Tab>("pedidos");
 
   const link = `${typeof window === "undefined" ? "" : location.origin}/n/${business.slug}`;
 
@@ -92,96 +95,118 @@ function Resumen() {
   if (business.lat && business.lng) markers.push({ id: "negocio", kind: "negocio", position: { lat: business.lat, lng: business.lng }, label: business.name });
   const maxMethod = Math.max(1, ...stats.byMethod.map((x) => x.amount));
 
+  const TABS: { id: Tab; label: string }[] = [
+    { id: "pedidos", label: `Pedidos (${activeOrders.length})` },
+    { id: "mapa", label: "Mapa" },
+    { id: "ingresos", label: "Ingresos" },
+    { id: "soporte", label: "Soporte" },
+  ];
+  const show = (t: Tab) => (tab === t ? "flex" : "hidden") + " lg:flex";
+
+  // El Resumen cabe en la pantalla: en escritorio todo a la vista; en celular, una sección a la vez.
   return (
-    <main className="mx-auto max-w-6xl space-y-5 p-4 md:p-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <main className="mx-auto flex h-full max-w-7xl flex-col gap-3 p-3 md:p-5">
+      <div className="flex shrink-0 flex-wrap items-end justify-between gap-2">
         <div>
-          <p className="text-slate-500">Resumen de hoy</p>
-          <h1 className="text-2xl font-extrabold">{business.name}</h1>
+          <p className="text-sm text-slate-500">Resumen de hoy</p>
+          <h1 className="text-xl font-extrabold leading-tight md:text-2xl">{business.name}</h1>
         </div>
+        {needsValidation.length > 0 && (
+          <Link href="/panel/pedidos?filtro=validar" className="btn-gas !px-4 !py-2 text-sm">
+            {needsValidation.length} pago(s) por validar
+          </Link>
+        )}
       </div>
 
       {params.get("nuevo") && (
-        <section className="rounded-3xl bg-gradient-to-br from-agua-600 to-agua-500 p-5 text-white shadow-lg">
-          <p className="text-xl font-extrabold">¡Tu negocio está listo!</p>
-          <p className="mt-1 text-sm opacity-90">Comparte este enlace por WhatsApp para que tus clientes te pidan gas y agua:</p>
+        <section className="shrink-0 rounded-3xl bg-gradient-to-br from-agua-600 to-agua-500 p-4 text-white shadow-lg">
+          <p className="text-lg font-extrabold">¡Tu negocio está listo!</p>
           <button
             onClick={() => {
               navigator.clipboard?.writeText(link);
               setCopied(true);
               setTimeout(() => setCopied(false), 2000);
             }}
-            className="mt-3 flex w-full items-center justify-between gap-3 rounded-2xl bg-white/20 px-4 py-3 text-left font-semibold"
+            className="mt-2 flex w-full items-center justify-between gap-3 rounded-2xl bg-white/20 px-4 py-2.5 text-left text-sm font-semibold"
           >
             <span className="truncate">{link}</span>
-            <span className="flex shrink-0 items-center gap-1 text-sm">
-              <Copy className="h-4 w-4" /> {copied ? "¡Copiado!" : "Copiar"}
+            <span className="flex shrink-0 items-center gap-1">
+              <Copy className="h-4 w-4" /> {copied ? "¡Copiado!" : "Copiar enlace para clientes"}
             </span>
           </button>
-          <p className="mt-3 text-sm opacity-90">
+          <p className="mt-2 text-xs opacity-90">
             Siguiente: ajusta tus precios en <Link href="/panel/productos" className="font-bold underline">Productos</Link> y agrega repartidores en <Link href="/panel/repartidores" className="font-bold underline">Equipo</Link>.
           </p>
         </section>
       )}
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <section className="flex shrink-0 gap-2 overflow-x-auto sm:grid sm:grid-cols-5 md:gap-3">
         <Kpi label="Pedidos hoy" value={String(stats.total)} tone="text-ink" />
         <Kpi label="En curso" value={String(stats.active)} tone="text-indigo-600" />
         <Kpi label="Entregados" value={String(stats.delivered)} tone="text-emerald-600" />
         <Kpi label="Ingresos validados" value={money(stats.validated)} tone="text-agua-700" />
-        <Kpi className="col-span-2 lg:col-span-1" label="Por validar" value={money(stats.toValidate)} tone="text-orange-600" sub={`${stats.toValidateCount} ${stats.toValidateCount === 1 ? "pago" : "pagos"}`} />
+        <Kpi label="Por validar" value={money(stats.toValidate)} tone="text-orange-600" sub={`${stats.toValidateCount} ${stats.toValidateCount === 1 ? "pago" : "pagos"}`} />
       </section>
 
-      {needsValidation.length > 0 && (
-        <section className="rounded-3xl border-2 border-orange-200 bg-orange-50 p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="font-bold text-orange-900">{needsValidation.length} pago(s) esperan tu validación</p>
-            <Link href="/panel/pedidos?filtro=validar" className="btn-gas px-4 py-2 text-sm">Validar ahora</Link>
-          </div>
-        </section>
-      )}
+      <div className="flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1 lg:hidden" role="tablist">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`flex-1 rounded-xl px-2 py-2 text-xs font-bold transition ${tab === t.id ? "bg-white text-agua-700 shadow-sm" : "text-slate-500"}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      <section className="grid gap-5 lg:grid-cols-5">
-        <div className="card overflow-hidden lg:col-span-3">
-          <div className="flex items-center justify-between p-4">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-3 lg:grid-cols-5">
+        <div className={`card min-h-0 flex-col overflow-hidden lg:col-span-3 ${show("mapa")}`}>
+          <div className="flex shrink-0 items-center justify-between px-4 py-2.5">
             <h2 className="font-bold">Mapa en vivo</h2>
             <span className="text-xs text-slate-500">{locations.length} repartidor(es) · {activeOrders.length} pedido(s)</span>
           </div>
-          <Map center={LIMA} zoom={12} className="h-96" markers={markers} fitKey={`${markers.length}`} />
+          <Map center={LIMA} zoom={12} className="min-h-[14rem] flex-1" markers={markers} fitKey={`${markers.length}`} />
         </div>
 
-        <div className="card p-5 lg:col-span-2">
-          <h2 className="font-bold">Ingresos validados hoy</h2>
-          <div className="mt-4 space-y-4">
-            {stats.byMethod.map(({ m, amount }) => (
-              <div key={m}>
-                <div className="mb-1 flex justify-between text-sm font-semibold">
-                  <span className="inline-flex items-center gap-2"><MethodMark method={m} className="h-5 w-5" />{METHOD[m].label}</span>
-                  <span>{money(amount)}</span>
+        <div className="flex min-h-0 min-w-0 flex-col gap-3 lg:col-span-2">
+          <div className={`card shrink-0 flex-col p-4 ${show("ingresos")}`}>
+            <h2 className="font-bold">Ingresos validados hoy</h2>
+            <div className="mt-3 space-y-2.5">
+              {stats.byMethod.map(({ m, amount }) => (
+                <div key={m}>
+                  <div className="mb-1 flex justify-between text-sm font-semibold">
+                    <span className="inline-flex items-center gap-2"><MethodMark method={m} className="h-5 w-5" />{METHOD[m].label}</span>
+                    <span>{money(amount)}</span>
+                  </div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full rounded-full" style={{ width: `${(amount / maxMethod) * 100}%`, background: METHOD[m].color }} />
+                  </div>
                 </div>
-                <div className="h-3 overflow-hidden rounded-full bg-slate-100">
-                  <div className="h-full rounded-full" style={{ width: `${(amount / maxMethod) * 100}%`, background: METHOD[m].color }} />
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+
+          <div className={`card min-h-0 flex-1 flex-col overflow-hidden ${show("pedidos")}`}>
+            <div className="flex shrink-0 items-center justify-between px-4 py-2.5">
+              <h2 className="font-bold">Pedidos en curso</h2>
+              <Link href="/panel/pedidos" className="text-sm font-bold text-agua-700">Ver todos →</Link>
+            </div>
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3">
+              {activeOrders.length === 0 && <Empty icon={<Coffee className="h-10 w-10 text-slate-300" />} title="Sin pedidos en curso" text="Cuando un cliente pida, aparecerá aquí al instante." />}
+              {activeOrders.slice(0, 8).map((o) => (
+                <OrderRow key={o.id} order={o} href="/panel/pedidos" showCustomer />
+              ))}
+            </div>
+          </div>
+
+          <div className={`min-h-0 flex-col lg:hidden ${tab === "soporte" ? "flex" : "hidden"}`}>
+            <SupportCard />
           </div>
         </div>
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-bold">Pedidos en curso</h2>
-          <Link href="/panel/pedidos" className="text-sm font-bold text-agua-700">Ver todos →</Link>
-        </div>
-        {activeOrders.length === 0 && <Empty icon={<Coffee className="h-12 w-12 text-slate-300" />} title="Sin pedidos en curso" text="Cuando un cliente pida, aparecerá aquí al instante." />}
-        <div className="grid gap-3 md:grid-cols-2">
-          {activeOrders.slice(0, 6).map((o) => (
-            <OrderRow key={o.id} order={o} href="/panel/pedidos" showCustomer />
-          ))}
-        </div>
-      </section>
-
-      <SupportCard />
+      </div>
     </main>
   );
 }

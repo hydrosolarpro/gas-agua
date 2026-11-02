@@ -80,6 +80,8 @@ export type Product = {
   price: number;
   active: boolean;
   sort_order: number;
+  /** null = no se controla el stock */
+  stock: number | null;
 };
 
 export type OrderItem = {

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
+import { NotifyProvider } from "@/components/NotifyProvider";
 
 const jakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin"] });
 
@@ -23,8 +24,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es-PE" className={`${jakarta.variable} h-full antialiased`}>
-      <body className="min-h-full font-sans">
-        <Suspense>{children}</Suspense>
+      <body className="h-dvh overflow-hidden font-sans">
+        <div id="app" className="h-full overflow-y-auto overscroll-contain">
+          <NotifyProvider>
+            <Suspense>{children}</Suspense>
+          </NotifyProvider>
+        </div>
       </body>
     </html>
   );

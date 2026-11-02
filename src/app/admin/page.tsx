@@ -52,7 +52,7 @@ export default function AdminResumen() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
+    <main className="mx-auto max-w-6xl space-y-3 p-3 md:p-5">
       <div>
         <p className="text-slate-500">Hoy, {fmtDay(new Date().toISOString().slice(0, 10))}</p>
         <h1 className="text-2xl font-extrabold">Resumen de la plataforma</h1>
@@ -67,6 +67,7 @@ export default function AdminResumen() {
 
       <ErrorText>{error}</ErrorText>
 
+      <div className="grid items-start gap-4 lg:grid-cols-2">
       <section className="space-y-3">
         <h2 className="font-bold">Pagos por validar</h2>
         {pending.length === 0 && <p className="text-sm text-slate-500">No hay pagos esperando tu revisión.</p>}
@@ -105,7 +106,7 @@ export default function AdminResumen() {
           />
         )}
         {owners.length > 0 && unpaid.length === 0 && <p className="text-sm text-slate-500">Nadie vence en los próximos 3 días.</p>}
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3">
           {unpaid.map((o) => (
             <div key={o.id} className="card flex items-center gap-3 p-4">
               <div className="min-w-0 flex-1">
@@ -135,6 +136,7 @@ export default function AdminResumen() {
           ))}
         </div>
       </section>
+      </div>
 
       <RegisterPaymentSheet owner={paying} onClose={() => setPaying(null)} />
     </main>

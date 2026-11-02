@@ -62,11 +62,11 @@ export default function ActivarAdmin() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-agua-50 to-white px-5 py-8">
+    <main className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-agua-50 to-white px-5 py-[clamp(0.5rem,2.5dvh,2rem)]">
       <Link href="/">
         <Logo />
       </Link>
-      <div className="card mt-8 w-full max-w-md p-6">
+      <div className="card mt-[clamp(0.5rem,2.5dvh,2rem)] w-full max-w-md p-[clamp(1rem,2.8dvh,1.5rem)]">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white">
             <ShieldCheck className="h-6 w-6" />

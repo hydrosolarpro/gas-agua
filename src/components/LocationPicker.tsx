@@ -44,7 +44,7 @@ export function LocationPicker({ value, onChange }: { value: PickedLocation; onC
         <Map
           center={value.point ?? LIMA}
           zoom={value.point ? 17 : 12}
-          className="h-72"
+          className="h-[clamp(10rem,30dvh,18rem)]"
           onMapClick={(p) => moveTo(p, value)}
           markers={
             value.point

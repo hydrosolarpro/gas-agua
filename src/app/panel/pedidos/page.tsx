@@ -175,29 +175,31 @@ function Pedidos() {
   const selected = orders.find((o) => o.id === selectedId) ?? null;
 
   return (
-    <main className="mx-auto max-w-4xl space-y-4 p-4 md:p-8">
-      <h1 className="text-2xl font-extrabold">Pedidos</h1>
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+    <main className="mx-auto flex h-full max-w-6xl flex-col gap-3 p-3 md:p-5">
+      <h1 className="shrink-0 text-xl font-extrabold md:text-2xl">Pedidos</h1>
+      <div className="flex shrink-0 gap-2 overflow-x-auto pb-1">
         {FILTERS.map((f) => (
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
-            className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${filter === f.id ? "bg-agua-600 text-white shadow" : "bg-white text-slate-600"}`}
+            className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${filter === f.id ? "bg-agua-600 text-white shadow" : "bg-white text-slate-600"}`}
           >
             {f.label} <span className="opacity-70">{counts[f.id]}</span>
           </button>
         ))}
       </div>
 
+      <div className="min-h-0 flex-1 overflow-y-auto">
       {list.length === 0 && <Empty icon={<Inbox className="h-12 w-12 text-slate-300" />} title="No hay pedidos aquí" text="Los pedidos nuevos aparecerán solos, sin recargar." />}
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         {list.map((o) => (
-          <button key={o.id} className="text-left" onClick={() => setSelectedId(o.id)}>
+          <button key={o.id} className="min-w-0 text-left" onClick={() => setSelectedId(o.id)}>
             <div className="pointer-events-none">
               <OrderRow order={o} href="#" showCustomer />
             </div>
           </button>
         ))}
+      </div>
       </div>
 
       <Sheet open={Boolean(selected)} onClose={() => setSelectedId(null)} title={selected ? `Pedido #${selected.code}` : ""}>

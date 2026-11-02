@@ -39,6 +39,8 @@ function CopyRow({ label, value }: { label: string; value: string | null }) {
 const TONE = { validado: "bg-emerald-100 text-emerald-800", pendiente: "bg-orange-100 text-orange-800", rechazado: "bg-rose-100 text-rose-800" } as const;
 const NAME = { validado: "Validado", pendiente: "Por validar", rechazado: "Rechazado" } as const;
 
+type Tab = "plan" | "pagar" | "pagos" | "soporte";
+
 export default function Suscripcion() {
   const { business } = usePanel();
   const { settings, payments, fee, plan, reload } = useSubscription(business);
@@ -49,6 +51,7 @@ export default function Suscripcion() {
   const [code, setCode] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [attachId, setAttachId] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("plan");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -59,6 +62,14 @@ export default function Suscripcion() {
       setOpen(true);
     }
   }, [plan === null]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const TABS: { id: Tab; label: string }[] = [
+    { id: "plan", label: "Mi plan" },
+    { id: "pagar", label: "Dónde pagar" },
+    { id: "pagos", label: "Mis pagos" },
+    { id: "soporte", label: "Soporte" },
+  ];
+  const pane = (t: Tab) => (tab === t ? "block" : "hidden");
 
   if (!settings || !payments || !plan) return <FullLoader />;
   const hasData = [settings.yape_number, settings.plin_number, settings.bank_account, settings.bank_cci].some(Boolean);
@@ -107,10 +118,25 @@ export default function Suscripcion() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl space-y-5 p-4 md:p-8">
-      <h1 className="text-2xl font-extrabold">Mi plan</h1>
+    <main className="mx-auto flex h-full max-w-3xl flex-col gap-3 p-3 md:p-5">
+      <h1 className="shrink-0 text-xl font-extrabold md:text-2xl">Mi plan</h1>
 
-      <section className="card space-y-4 p-5">
+      <div className="flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`flex-1 rounded-xl px-2 py-2 text-sm font-bold transition ${tab === t.id ? "bg-white text-agua-700 shadow-sm" : "text-slate-500"}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+
+      <section className={`card space-y-3 p-4 md:p-5 ${pane("plan")}`}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm text-slate-500">
@@ -164,7 +190,7 @@ export default function Suscripcion() {
         </button>
       </section>
 
-      <section className="card space-y-3 p-5">
+      <section className={`card space-y-3 p-4 md:p-5 ${pane("pagar")}`}>
         <h2 className="font-bold">Dónde pagar</h2>
         {!hasData && <p className="text-sm text-slate-500">El administrador aún no publicó sus datos de pago. Escríbele por WhatsApp.</p>}
         <CopyRow label="Yape" value={settings.yape_number} />
@@ -183,9 +209,11 @@ export default function Suscripcion() {
         )}
       </section>
 
-      <SupportCard />
+      <div className={pane("soporte")}>
+        <SupportCard />
+      </div>
 
-      <section className="space-y-3">
+      <section className={`space-y-2 ${pane("pagos")}`}>
         <h2 className="font-bold">Mis pagos</h2>
         {payments.length === 0 && <Empty icon={<Wallet className="h-12 w-12 text-slate-300" />} title="Aún no registras pagos" />}
         {payments.map((p) => (
@@ -219,6 +247,8 @@ export default function Suscripcion() {
           </div>
         ))}
       </section>
+
+      </div>
 
       <Sheet open={open} onClose={() => setOpen(false)} title={plan.phase === "demo" ? "Avisar mi pago" : "Renovar mi plan"}>
         <div className="space-y-4">

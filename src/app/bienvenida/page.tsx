@@ -62,9 +62,9 @@ function Bienvenida() {
   if (loading || !profile) return <FullLoader />;
 
   return (
-    <main className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-agua-50 to-white px-5 py-8">
+    <main className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-agua-50 to-white px-5 py-[clamp(0.5rem,2.5dvh,2rem)]">
       <Logo />
-      <div className="card mt-8 w-full max-w-md p-6">
+      <div className="card mt-[clamp(0.5rem,2.5dvh,2rem)] w-full max-w-md p-[clamp(1rem,2.8dvh,1.5rem)]">
         <h1 className="text-2xl font-extrabold">¡Bienvenido{fullName ? `, ${fullName.split(" ")[0]}` : ""}!</h1>
         <p className="mt-1 text-slate-600">Solo falta confirmar tus datos para pedir.</p>
         <div className="mt-6 space-y-4">

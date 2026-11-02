@@ -93,9 +93,9 @@ export default function Unirse() {
 
   if (linked) {
     return (
-      <main className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-agua-50 to-white px-5 py-8">
+      <main className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-agua-50 to-white px-5 py-[clamp(0.5rem,2.5dvh,2rem)]">
         <Logo />
-        <div className="card mt-8 w-full max-w-md space-y-4 p-6 text-center">
+        <div className="card mt-[clamp(0.5rem,2.5dvh,2rem)] w-full max-w-md space-y-4 p-6 text-center">
           <h1 className="text-2xl font-extrabold">¡Listo!</h1>
           <p className="text-slate-600">
             El celular <b>{phone}</b> quedó registrado como cliente de <b>{check.business}</b>. Entra con tu PIN de siempre para pedir.
@@ -109,13 +109,13 @@ export default function Unirse() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-agua-50 to-white px-5 py-8">
+    <main className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-agua-50 to-white px-5 py-[clamp(0.5rem,2.5dvh,2rem)]">
       <Link href="/">
         <Logo />
       </Link>
 
       {!check.valid ? (
-        <div className="card mt-8 w-full max-w-md space-y-4 p-6 text-center">
+        <div className="card mt-[clamp(0.5rem,2.5dvh,2rem)] w-full max-w-md space-y-4 p-6 text-center">
           <h1 className="text-2xl font-extrabold">Esta invitación ya no es válida</h1>
           <p className="text-slate-600">El enlace venció o fue anulado. Pide uno nuevo a tu negocio.</p>
           <Link href="/ingresar" className="btn-outline w-full">
@@ -123,7 +123,7 @@ export default function Unirse() {
           </Link>
         </div>
       ) : (
-        <div className="card mt-8 w-full max-w-md p-6">
+        <div className="card mt-[clamp(0.5rem,2.5dvh,2rem)] w-full max-w-md p-[clamp(1rem,2.8dvh,1.5rem)]">
           <p className="text-sm font-semibold text-agua-700">Paso {step === "datos" ? 1 : step === "pin" ? 2 : 3} de 3</p>
           <h1 className="mt-1 text-2xl font-extrabold">
             {step === "datos" ? `Pide con ${check.business}` : step === "pin" ? (existing ? "Escribe tu PIN" : "Elige tu PIN") : "Repite tu PIN"}
@@ -191,7 +191,7 @@ export default function Unirse() {
           </div>
         </div>
       )}
-      <p className="mt-6 text-sm text-slate-600">
+      <p className="mt-[clamp(0.5rem,2dvh,1.5rem)] text-sm text-slate-600">
         ¿Ya tienes cuenta?{" "}
         <Link href="/ingresar" className="font-bold text-agua-700">
           Ingresa aquí

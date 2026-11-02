@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { KeyRound, LogOut } from "lucide-react";
 import { BajaButton } from "@/components/BajaButton";
+import { SoundSwitch } from "@/components/NotifyProvider";
 import { PinInput } from "@/components/PinInput";
 import { ErrorText, FullLoader, Spinner, TopBar } from "@/components/ui";
 import { homeFor, preferredRole, useSession } from "@/lib/hooks";
@@ -48,10 +49,11 @@ export default function CuentaPage() {
   const home = homeFor(preferredRole(profile));
 
   return (
-    <div className="min-h-dvh">
+    <div className="flex h-full flex-col">
       <TopBar title="Mi cuenta" back={home} />
-      <main className="mx-auto max-w-lg space-y-4 p-4">
-        <section className="card p-5">
+      <main className="mx-auto grid min-h-0 w-full max-w-4xl flex-1 grid-cols-[minmax(0,1fr)] content-start gap-3 overflow-y-auto p-3 md:grid-cols-2 md:p-5">
+        <div className="space-y-3">
+        <section className="card p-4">
           <p className="text-xl font-bold">{profile.full_name || "Sin nombre"}</p>
           <p className="flex items-center gap-2 text-slate-600"><Phone className="h-4 w-4" /> {profile.phone ?? "Sin celular"}</p>
           {user?.email && !user.email.endsWith("@pin.aguagasexpress.app") && (
@@ -63,13 +65,15 @@ export default function CuentaPage() {
           </p>
         </section>
 
-        <section className="card p-5">
-          <div className="mb-4 flex items-center gap-2">
+        </div>
+
+        <section className="card p-4">
+          <div className="mb-2 flex items-center gap-2">
             <KeyRound className="h-5 w-5 text-agua-600" />
             <h2 className="text-lg font-bold">{profile.has_pin ? "Cambiar mi PIN" : "Crear mi PIN"}</h2>
           </div>
-          <p className="mb-4 text-sm text-slate-600">
-            Con tu PIN entras con tu celular <b>{profile.phone}</b> para entrar desde cualquier celular.
+          <p className="mb-2 text-sm text-slate-600 [@media(max-height:800px)]:hidden">
+            Con tu PIN entras con tu celular <b>{profile.phone}</b> desde cualquier celular.
           </p>
           <PinInput value={pin} onChange={setPin} onComplete={savePin} label="Nuevo PIN" />
           <div className="mt-4 space-y-2">
@@ -83,10 +87,16 @@ export default function CuentaPage() {
           </div>
         </section>
 
-        <button onClick={logout} className="btn-outline w-full text-rose-600">
-          <LogOut className="h-5 w-5" /> Cerrar sesión
-        </button>
-        {profile.role === "cliente" && !profile.is_admin && <BajaButton />}
+        <div className="md:col-span-2">
+          <SoundSwitch />
+        </div>
+
+        <div className="grid gap-3 md:col-span-2 md:grid-cols-2">
+          <button onClick={logout} className="btn-outline w-full !py-2.5 text-rose-600">
+            <LogOut className="h-5 w-5" /> Cerrar sesión
+          </button>
+          {profile.role === "cliente" && !profile.is_admin && <BajaButton />}
+        </div>
       </main>
     </div>
   );

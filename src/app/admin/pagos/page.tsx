@@ -47,7 +47,7 @@ export default function AdminPagos() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl space-y-5 p-4 md:p-8">
+    <main className="mx-auto max-w-6xl space-y-3 p-3 md:p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl font-extrabold">Pagos de los dueños</h1>
         <div className="text-right">
@@ -71,7 +71,7 @@ export default function AdminPagos() {
       <ErrorText>{error}</ErrorText>
 
       {list.length === 0 && <Empty icon={<Wallet className="h-12 w-12 text-slate-300" />} title="No hay pagos en esta lista" />}
-      <div className="space-y-3">
+      <div className="grid items-start gap-3 lg:grid-cols-2">
         {list.map((p) => (
           <article key={p.id} className="card flex flex-wrap items-center gap-3 p-4">
             <div className="min-w-0 flex-1">

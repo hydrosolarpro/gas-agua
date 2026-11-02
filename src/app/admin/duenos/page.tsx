@@ -33,7 +33,7 @@ export default function AdminDuenos() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl space-y-5 p-4 md:p-8">
+    <main className="mx-auto max-w-6xl space-y-3 p-3 md:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold">Dueños de negocio</h1>
         <button onClick={openInvite} className="btn-gas px-4 py-2.5 text-sm">
@@ -57,7 +57,7 @@ export default function AdminDuenos() {
       )}
       {owners.length > 0 && list.length === 0 && <p className="text-sm text-slate-500">Ningún resultado para “{q}”.</p>}
 
-      <div className="space-y-3">
+      <div className="grid items-start gap-3 lg:grid-cols-2">
         {list.map((o) => {
           const plan = ownerPlan(o, payments);
           const st = planChip(plan);

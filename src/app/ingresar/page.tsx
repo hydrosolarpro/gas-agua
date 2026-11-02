@@ -212,11 +212,11 @@ function IngresarForm() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-agua-50 to-white px-5 py-8">
-      <Link href="/">
+    <main className="flex min-h-full flex-col items-center justify-center bg-gradient-to-b from-agua-50 to-white px-5 py-[clamp(0.5rem,2dvh,2rem)]">
+      <Link href="/" className="[@media(max-height:700px)]:hidden">
         <Logo />
       </Link>
-      <div className="card mt-8 w-full max-w-md p-6">
+      <div className="card mt-[clamp(0.5rem,2.5dvh,2rem)] w-full max-w-md p-[clamp(1rem,2.8dvh,1.5rem)]">
         {rol === "cliente" && <AuthTabs active="ingresar" next={params.get("next")} />}
         <div className="flex items-center gap-3">
           {rol !== "cliente" && (
@@ -225,8 +225,8 @@ function IngresarForm() {
             </span>
           )}
           <div>
-            <h1 className="text-2xl font-extrabold">{title}</h1>
-            <p className="text-slate-600">{text}</p>
+            <h1 className="text-[clamp(1.25rem,3.4dvh,1.5rem)] font-extrabold leading-tight">{title}</h1>
+            <p className="text-sm text-slate-600 [@media(max-height:1000px)]:hidden">{text}</p>
           </div>
         </div>
 
@@ -248,9 +248,9 @@ function IngresarForm() {
             ))}
           </div>
         )}
-        <div className="mt-6" />
+        <div className="mt-[clamp(0.5rem,2dvh,1.5rem)]" />
         {rol === "repartidor" && (
-          <div className="mb-5 flex gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
+          <div className="mb-[clamp(0.4rem,1.6dvh,1.25rem)] flex gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
             {[
               { id: false, label: "Ingresar" },
               { id: true, label: "Primera vez" },
@@ -260,7 +260,7 @@ function IngresarForm() {
                 role="tab"
                 aria-selected={first === tab.id}
                 onClick={() => setFirst(tab.id)}
-                className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-bold transition ${first === tab.id ? "bg-white text-agua-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                className={`flex-1 rounded-xl px-4 py-[clamp(0.4rem,1.2dvh,0.625rem)] text-sm font-bold transition ${first === tab.id ? "bg-white text-agua-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
               >
                 {tab.label}
               </button>
@@ -274,11 +274,11 @@ function IngresarForm() {
         <label className="label">Celular</label>
         <PhoneInput value={phone} onChange={setPhone} />
 
-        <div className="mt-5">
+        <div className="mt-[clamp(0.4rem,1.6dvh,1.25rem)]">
           <PinInput value={pin} onChange={setPin} onComplete={loginPin} />
         </div>
 
-        <div className="mt-5 space-y-3">
+        <div className="mt-[clamp(0.4rem,1.6dvh,1.25rem)] space-y-2">
           <ErrorText>{error}</ErrorText>
           {mismatch && (
             <div className="space-y-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
@@ -310,21 +310,21 @@ function IngresarForm() {
               ¿Aún no tienes cuenta? Crear mi cuenta con PIN
             </Link>
           )}
-          <button onClick={() => loginPin()} disabled={loading !== null || pin.length !== 4} className="btn-primary w-full">
+          <button onClick={() => loginPin()} disabled={loading !== null || pin.length !== 4} className="btn-primary w-full !py-[clamp(0.55rem,1.6dvh,0.875rem)] [@media(max-height:700px)]:hidden">
             {loading === "pin" && <Spinner className="h-5 w-5" />} Ingresar
           </button>
         </div>
           </>
         )}
       </div>
-      <p className="mt-6 max-w-md text-center text-sm text-slate-600">
+      <p className="mt-[clamp(0.5rem,2dvh,1.5rem)] max-w-md text-center text-sm text-slate-600">
         {rol === "cliente" && (
           <>
             ¿Primera vez?{" "}
             <Link href={`/registro?next=${encodeURIComponent(next)}`} className="font-bold text-agua-700">
               Crea tu cuenta con PIN
             </Link>
-            <span className="mt-2 block">
+            <span className="mt-1 block">
               ¿Tu negocio reinició tu PIN?{" "}
               <button onClick={() => setFirst((v) => !v)} className="font-bold text-agua-700">
                 {first ? "Volver a ingresar" : "Elige uno nuevo"}
@@ -332,8 +332,8 @@ function IngresarForm() {
             </span>
           </>
         )}
-        {rol === "dueno" && "¿Quieres usar AguaGasExpress en tu negocio? El administrador te envía una invitación para crear tu cuenta."}
-        {rol === "repartidor" && "¿Aún no tienes acceso? Tu dueño te registra con tu nombre y celular; luego creas tu PIN en «Primera vez»."}
+        {rol === "dueno" && <span className="[@media(max-height:1000px)]:hidden">¿Quieres usar AguaGasExpress en tu negocio? El administrador te envía una invitación para crear tu cuenta.</span>}
+        {rol === "repartidor" && <span className="[@media(max-height:1000px)]:hidden">¿Aún no tienes acceso? Tu dueño te registra con tu nombre y celular; luego creas tu PIN en «Primera vez».</span>}
         {rol === "admin" && (
           <>
             ¿Primera vez o olvidaste tu PIN?{" "}
@@ -344,7 +344,7 @@ function IngresarForm() {
         )}
       </p>
       {rol !== "cliente" && (
-        <Link href="/ingresar" className="mt-3 text-sm font-semibold text-slate-500 hover:text-slate-800">
+        <Link href="/ingresar" className="mt-2 text-sm font-semibold text-slate-500 hover:text-slate-800">
           ← Soy cliente
         </Link>
       )}

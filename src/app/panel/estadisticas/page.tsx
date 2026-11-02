@@ -49,6 +49,7 @@ export default function Estadisticas() {
   const [a, setA] = useState(today.slice(0, 7));
   const [b, setB] = useState(today.slice(0, 7));
   const [report, setReport] = useState<Report | null>(null);
+  const [rtab, setRtab] = useState<"cancelados" | "clientes">("cancelados");
   const [loading, setLoading] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [error, setError] = useState("");
@@ -203,102 +204,128 @@ export default function Estadisticas() {
     );
 
   return (
-    <main className="mx-auto max-w-4xl space-y-5 p-4 md:p-8">
-      <h1 className="text-2xl font-extrabold">Estadísticas del negocio</h1>
-      <p className="text-sm text-slate-600">
-        Aquí quedan guardados todos tus pedidos cancelados y los datos de tus clientes. Elige un período para verlos y descargarlos en PDF.
-      </p>
+    <main className="mx-auto flex h-full max-w-6xl flex-col gap-3 p-3 md:p-5 lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
+      <div className="shrink-0 lg:col-span-2">
+        <h1 className="text-xl font-extrabold md:text-2xl">Estadísticas del negocio</h1>
+      </div>
 
-      <section className="card space-y-4 p-5">
-        <div className="-mx-1 flex flex-wrap gap-2">
+      <section className="card shrink-0 space-y-3 p-3 md:p-4 lg:self-start">
+        <select className="input !py-2.5 lg:hidden" value={mode} onChange={(e) => pick(e.target.value as RangeMode)} aria-label="Tipo de período">
+          {RANGE_MODES.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+        <div className="hidden flex-wrap gap-1.5 lg:flex">
           {RANGE_MODES.map((m) => (
             <button
               key={m.id}
               onClick={() => pick(m.id)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${mode === m.id ? "bg-agua-600 text-white shadow" : "bg-slate-100 text-slate-600"}`}
+              className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${mode === m.id ? "bg-agua-600 text-white shadow" : "bg-slate-100 text-slate-600"}`}
             >
               {m.label}
             </button>
           ))}
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex gap-3">
           {field(a, setA, two ? "Desde" : mode === "dia" ? "Fecha" : mode === "mes" ? "Mes" : "Año")}
           {two && field(b, setB, "Hasta")}
         </div>
         <ErrorText>{error}</ErrorText>
-        <div className="flex flex-wrap gap-3">
-          <button onClick={load} disabled={loading} className="btn-primary flex-1">
-            {loading && <Spinner className="h-5 w-5" />} Ver estadísticas
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+          <button onClick={load} disabled={loading} className="btn-primary !py-2.5 text-sm">
+            {loading && <Spinner className="h-4 w-4" />} Ver estadísticas
           </button>
-          <button onClick={pdf} disabled={!report || pdfBusy} className="btn-outline flex-1">
-            {pdfBusy ? <Spinner className="h-5 w-5" /> : <Download className="h-5 w-5" />} Descargar PDF
+          <button onClick={pdf} disabled={!report || pdfBusy} className="btn-outline !py-2.5 text-sm">
+            {pdfBusy ? <Spinner className="h-4 w-4" /> : <Download className="h-4 w-4" />} Descargar PDF
           </button>
         </div>
+        <p className="hidden text-xs text-slate-500 lg:block">
+          Aquí quedan guardados todos tus pedidos cancelados y los datos de tus clientes. Elige un período para verlos y descargarlos en PDF.
+        </p>
       </section>
 
-      {report && (
-        <>
-          <p className="font-semibold text-slate-700">Período: {report.range.label}</p>
-          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {[
-              ["Pedidos recibidos", String(report.summary.orders), "text-ink"],
-              ["Entregados", String(report.summary.delivered), "text-emerald-600"],
-              ["Cancelados", String(report.summary.cancelled), "text-rose-600"],
-              ["Ventas validadas", money(report.summary.validated), "text-agua-700"],
-              ["Dinero no concretado", money(report.summary.cancelledAmount), "text-rose-600"],
-              ["Clientes nuevos", String(report.summary.newCustomers), "text-ink"],
-              ["Clientes con pedidos", String(report.summary.activeCustomers), "text-ink"],
-            ].map(([label, value, tone]) => (
-              <div key={label} className="card p-4">
-                <p className="text-xs font-semibold text-slate-500">{label}</p>
-                <p className={`mt-1 text-xl font-extrabold ${tone}`}>{value}</p>
-              </div>
-            ))}
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-bold">Pedidos cancelados ({report.cancelled.length})</h2>
-            {report.cancelled.length === 0 && <Empty icon={<FileText className="h-12 w-12 text-slate-300" />} title="Sin pedidos cancelados en este período" />}
-            {report.cancelled.map((c) => (
-              <article key={c.code + c.cancelled_at} className="card space-y-1 p-4">
-                <div className="flex items-baseline justify-between gap-2">
-                  <p className="font-bold">
-                    #{c.code} · {c.customer}
-                  </p>
-                  <p className="font-extrabold text-rose-600">{money(c.total)}</p>
+      <section className="flex min-h-0 flex-1 flex-col gap-3">
+        {!report && <Empty icon={<FileText className="h-10 w-10 text-slate-300" />} title="Elige un período" text="Y pulsa «Ver estadísticas»." />}
+        {report && (
+          <>
+            <p className="shrink-0 text-sm font-semibold text-slate-700">Período: {report.range.label}</p>
+            <div className="flex shrink-0 gap-2 overflow-x-auto pb-1">
+              {[
+                ["Pedidos", String(report.summary.orders), "text-ink"],
+                ["Entregados", String(report.summary.delivered), "text-emerald-600"],
+                ["Cancelados", String(report.summary.cancelled), "text-rose-600"],
+                ["Ventas validadas", money(report.summary.validated), "text-agua-700"],
+                ["No concretado", money(report.summary.cancelledAmount), "text-rose-600"],
+                ["Clientes nuevos", String(report.summary.newCustomers), "text-ink"],
+                ["Con pedidos", String(report.summary.activeCustomers), "text-ink"],
+              ].map(([label, value, tone]) => (
+                <div key={label} className="card min-w-[7.5rem] shrink-0 px-3 py-2">
+                  <p className="text-[11px] font-semibold text-slate-500">{label}</p>
+                  <p className={`text-lg font-extrabold leading-tight ${tone}`}>{value}</p>
                 </div>
-                <p className="text-sm text-slate-600">
-                  {c.phone} · {c.items}
-                </p>
-                <p className="text-sm text-slate-500">
-                  Cancelado el {dateTime(c.cancelled_at)} por <b>{c.by}</b>
-                  {c.reason ? ` · “${c.reason}”` : ""}
-                </p>
-              </article>
-            ))}
-          </section>
+              ))}
+            </div>
 
-          <section className="space-y-3">
-            <h2 className="font-bold">Clientes ({report.customers.length})</h2>
-            {report.customers.length === 0 && <Empty icon={<FileText className="h-12 w-12 text-slate-300" />} title="Sin clientes en este período" />}
-            {report.customers.map((c) => (
-              <article key={c.phone + c.joined} className="card flex flex-wrap items-center justify-between gap-2 p-4">
-                <div className="min-w-0">
-                  <p className="truncate font-bold">{c.name}</p>
-                  <p className="text-sm text-slate-500">
-                    {c.phone} · {c.source} · desde {dateTime(c.joined)}
-                  </p>
-                </div>
-                <p className="text-right text-sm">
-                  <b>{c.orders}</b> {c.orders === 1 ? "pedido" : "pedidos"}
-                  {c.cancelled > 0 && <span className="text-rose-600"> · {c.cancelled} cancel.</span>}
-                  <span className="block font-extrabold text-agua-700">{money(c.spent)}</span>
-                </p>
-              </article>
-            ))}
-          </section>
-        </>
-      )}
+            <div className="flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
+              {[
+                { id: "cancelados" as const, label: `Cancelados (${report.cancelled.length})` },
+                { id: "clientes" as const, label: `Clientes (${report.customers.length})` },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  role="tab"
+                  aria-selected={rtab === t.id}
+                  onClick={() => setRtab(t.id)}
+                  className={`flex-1 rounded-xl px-2 py-2 text-sm font-bold transition ${rtab === t.id ? "bg-white text-agua-700 shadow-sm" : "text-slate-500"}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+              {rtab === "cancelados" && report.cancelled.length === 0 && <Empty icon={<FileText className="h-10 w-10 text-slate-300" />} title="Sin pedidos cancelados en este período" />}
+              {rtab === "cancelados" &&
+                report.cancelled.map((c) => (
+                  <article key={c.code + c.cancelled_at} className="card space-y-0.5 p-3">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="min-w-0 truncate font-bold">
+                        #{c.code} · {c.customer}
+                      </p>
+                      <p className="font-extrabold text-rose-600">{money(c.total)}</p>
+                    </div>
+                    <p className="truncate text-sm text-slate-600">
+                      {c.phone} · {c.items}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      Cancelado el {dateTime(c.cancelled_at)} por <b>{c.by}</b>
+                      {c.reason ? ` · “${c.reason}”` : ""}
+                    </p>
+                  </article>
+                ))}
+              {rtab === "clientes" && report.customers.length === 0 && <Empty icon={<FileText className="h-10 w-10 text-slate-300" />} title="Sin clientes en este período" />}
+              {rtab === "clientes" &&
+                report.customers.map((c) => (
+                  <article key={c.phone + c.joined} className="card flex items-center justify-between gap-2 p-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold">{c.name}</p>
+                      <p className="truncate text-sm text-slate-500">
+                        {c.phone} · {c.source} · desde {dateTime(c.joined)}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-right text-sm">
+                      <b>{c.orders}</b> {c.orders === 1 ? "pedido" : "pedidos"}
+                      {c.cancelled > 0 && <span className="text-rose-600"> · {c.cancelled} cancel.</span>}
+                      <span className="block font-extrabold text-agua-700">{money(c.spent)}</span>
+                    </p>
+                  </article>
+                ))}
+            </div>
+          </>
+        )}
+      </section>
     </main>
   );
 }

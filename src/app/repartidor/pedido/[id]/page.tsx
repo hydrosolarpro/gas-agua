@@ -14,6 +14,8 @@ import { useOrder, useRoute, useSession, useShareLocation } from "@/lib/hooks";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { PaymentMethod } from "@/lib/types";
 
+type Tab = "entrega" | "pedido";
+
 export default function EntregaPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -25,6 +27,7 @@ export default function EntregaPage() {
   const [method, setMethod] = useState<PaymentMethod>("efectivo");
   const [received, setReceived] = useState("");
   const [opCode, setOpCode] = useState("");
+  const [tab, setTab] = useState<Tab>("entrega");
 
   const mine = order?.driver_id === profile?.id;
   const sharing = Boolean(order && mine && (order.status === "aceptado" || order.status === "en_camino"));
@@ -67,14 +70,40 @@ export default function EntregaPage() {
   if (position) markers.push({ id: "yo", kind: "repartidor", position, label: "Tú" });
   const payNumber = method === "yape" ? business?.yape_number : method === "plin" ? business?.plin_number : null;
 
-  return (
-    <div className="min-h-dvh pb-8">
-      <TopBar title={`Pedido #${order.code}`} back="/repartidor" right={<StatusBadge status={order.status} />} />
-      <Map center={position ?? destination!} zoom={16} className="h-[40dvh]" markers={markers} route={sharing ? route?.points : undefined} fitKey={`${order.status}-${position ? 1 : 0}`} />
+  const TABS: { id: Tab; label: string }[] = [
+    { id: "entrega", label: "Entrega" },
+    { id: "pedido", label: "Pedido y cobro" },
+  ];
+  const pane = (t: Tab) => (tab === t ? "block space-y-3" : "hidden");
 
-      <main className="relative z-10 mx-auto -mt-6 max-w-lg space-y-4 px-4">
+  // Mapa y datos lado a lado en pantallas grandes; abajo, la acción principal siempre a la vista.
+  return (
+    <div className="flex h-full flex-col">
+      <TopBar title={`Pedido #${order.code}`} back="/repartidor" right={<StatusBadge status={order.status} />} />
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="relative h-[28dvh] shrink-0 lg:h-auto lg:flex-1">
+          <Map center={position ?? destination!} zoom={16} className="h-full" markers={markers} route={sharing ? route?.points : undefined} fitKey={`${order.status}-${position ? 1 : 0}`} />
+        </div>
+
+        <aside className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-3 lg:w-[26rem] lg:flex-none lg:border-l lg:border-slate-200">
+          <div className="flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={tab === t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex-1 rounded-xl px-2 py-2 text-sm font-bold transition ${tab === t.id ? "bg-white text-agua-700 shadow-sm" : "text-slate-500"}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className={pane("entrega")}>
         {sharing && (
-          <section className="card p-4">
+          <section className="card p-3">
             {gps === "sin_permiso" ? (
               <p className="text-sm font-medium text-rose-700"><TriangleAlert className="mr-1 inline h-4 w-4 -mt-0.5" /> Activa el permiso de ubicación del navegador para que el cliente te vea en el mapa.</p>
             ) : (
@@ -89,7 +118,7 @@ export default function EntregaPage() {
           </section>
         )}
 
-        <section className="card space-y-4 p-5">
+        <section className="card space-y-3 p-4">
           <div>
             <p className="text-xs text-slate-500">Cliente</p>
             <p className="text-xl font-bold">{order.customer_name || "Cliente"}</p>
@@ -112,16 +141,18 @@ export default function EntregaPage() {
             {order.customer_phone && (
               <>
                 <a href={telLink(order.customer_phone)} className="btn-ghost px-3 text-sm">
-                  <Phone className="h-4 w-4" /> Llamar al cliente
+                  <Phone className="h-4 w-4" /> Llamar
                 </a>
                 <a href={waLink(order.customer_phone, `Hola ${order.customer_name}, soy tu repartidor de ${business?.name ?? "AguaGasExpress"}. Pedido #${order.code}.`)} target="_blank" className="btn-ghost px-3 text-sm text-emerald-700">
-                  <MessageCircle className="h-4 w-4" /> WhatsApp al cliente
+                  <MessageCircle className="h-4 w-4" /> WhatsApp
                 </a>
               </>
             )}
           </div>
         </section>
 
+            </div>
+            <div className={pane("pedido")}>
         <section className="card space-y-3 p-5">
           <OrderItems order={order} />
           <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-3">
@@ -135,8 +166,11 @@ export default function EntregaPage() {
           )}
         </section>
 
-        <ErrorText>{error}</ErrorText>
+            </div>
+          </div>
 
+          <div className="shrink-0 space-y-2">
+            <ErrorText>{error}</ErrorText>
         {order.status === "pendiente" && (
           <button onClick={() => rpc("assign_order", { p_order_id: order.id })} disabled={busy} className="btn-gas w-full">
             <Hand className="h-5 w-5" /> Tomar este pedido
@@ -147,7 +181,7 @@ export default function EntregaPage() {
             {busy ? <Spinner className="h-5 w-5" /> : <Bike className="h-5 w-5" />} Salir a entregar
           </button>
         )}
-        {(order.status === "aceptado" || order.status === "en_camino") && mine && order.payment_status !== "reportado" && (
+        {order.status === "en_camino" && mine && order.payment_status !== "reportado" && (
           <button
             onClick={() => {
               setMethod(order.payment_method === "otro" ? "efectivo" : order.payment_method);
@@ -170,7 +204,9 @@ export default function EntregaPage() {
             Pedido entregado y pago validado. ¡Buen trabajo!
           </p>
         )}
-      </main>
+          </div>
+        </aside>
+      </div>
 
       <Sheet open={payOpen} onClose={() => setPayOpen(false)} title="Registrar cobro">
         <p className="mb-4 text-3xl font-extrabold">{money(total)}</p>

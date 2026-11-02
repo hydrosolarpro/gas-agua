@@ -67,7 +67,7 @@ export default function AdminCobros() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl space-y-5 p-4 md:p-8">
+    <main className="mx-auto max-w-5xl space-y-3 p-3 md:p-5">
       <div>
         <h1 className="text-2xl font-extrabold">Mis datos de cobro</h1>
         <p className="text-slate-600">Lo que completes aquí lo ven los dueños de negocio para hacerte sus pagos.</p>

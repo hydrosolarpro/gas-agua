@@ -14,6 +14,8 @@ import { rememberRole, useSession } from "@/lib/hooks";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Business, Order } from "@/lib/types";
 
+type Tab = "pedir" | "pedidos" | "cuenta";
+
 export default function ClientePage() {
   const { loading, profile } = useSession(["cliente"]);
   const [orders, setOrders] = useState<Order[] | null>(null);
@@ -21,6 +23,7 @@ export default function ClientePage() {
   const [mine, setMine] = useState<string[]>([]);
   const [driverInvites, setDriverInvites] = useState<{ business_id: string; name: string }[]>([]);
   const router = useRouter();
+  const [tab, setTab] = useState<Tab>("pedir");
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -74,18 +77,26 @@ export default function ClientePage() {
   const favorite = visible.find((b) => b.id === profile.last_business_id);
   const others = visible.filter((b) => b.id !== profile.last_business_id);
 
+  const TABS: { id: Tab; label: string }[] = [
+    { id: "pedir", label: "Pedir" },
+    { id: "pedidos", label: `Mis pedidos${active.length ? ` (${active.length})` : ""}` },
+    { id: "cuenta", label: "Cuenta" },
+  ];
+  const pane = (t: Tab) => (tab === t ? "block space-y-3" : "hidden");
+
+  // Tres secciones cortas en vez de una página larga: cada una cabe en la pantalla.
   return (
-    <div className="min-h-dvh">
-      <header className="flex items-center justify-between bg-white px-4 py-3 shadow-sm">
+    <div className="flex h-full flex-col">
+      <header className="flex shrink-0 items-center justify-between bg-white px-4 py-2 shadow-sm">
         <Logo size="sm" />
         <Link href="/cuenta" className="rounded-full bg-slate-100 p-2" aria-label="Mi cuenta">
           <UserRound className="h-5 w-5" />
         </Link>
       </header>
-      <main className="mx-auto max-w-lg space-y-6 p-4">
-        <section>
-          <p className="text-slate-500">Hola, {profile.full_name.split(" ")[0] || "vecino"}</p>
-          <h1 className="text-2xl font-extrabold">¿Qué necesitas hoy?</h1>
+      <main className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-3 p-3 md:p-5">
+        <section className="shrink-0">
+          <p className="text-sm text-slate-500">Hola, {profile.full_name.split(" ")[0] || "vecino"}</p>
+          <h1 className="text-xl font-extrabold md:text-2xl">¿Qué necesitas hoy?</h1>
         </section>
 
         {driverInvites.map((i) => (
@@ -106,15 +117,23 @@ export default function ClientePage() {
           </section>
         ))}
 
-        {active.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="flex items-center gap-2 font-bold"><Bike className="h-5 w-5 text-agua-600" /> En curso</h2>
-            {active.map((o) => (
-              <OrderRow key={o.id} order={o} href={`/cliente/pedido/${o.id}`} />
-            ))}
-          </section>
-        )}
 
+        <div className="flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-1 rounded-xl px-2 py-2 text-sm font-bold transition ${tab === t.id ? "bg-white text-agua-700 shadow-sm" : "text-slate-500"}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className={pane("pedir")}>
         {favorite && (
           <Link href={`/n/${favorite.slug}`} className="block rounded-3xl bg-gradient-to-br from-gas-600 to-gas-500 p-5 text-white shadow-lg shadow-gas-500/25">
             <p className="text-sm opacity-90">Pedir de nuevo a</p>
@@ -142,6 +161,17 @@ export default function ClientePage() {
           ))}
         </section>
 
+          </div>
+          <div className={pane("pedidos")}>
+        {active.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="flex items-center gap-2 font-bold"><Bike className="h-5 w-5 text-agua-600" /> En curso</h2>
+            {active.map((o) => (
+              <OrderRow key={o.id} order={o} href={`/cliente/pedido/${o.id}`} />
+            ))}
+          </section>
+        )}
+
         {past.length > 0 && (
           <section className="space-y-3">
             <h2 className="font-bold">Mis pedidos anteriores</h2>
@@ -151,12 +181,23 @@ export default function ClientePage() {
           </section>
         )}
 
+            {active.length === 0 && past.length === 0 && (
+              <Empty icon={<Store className="h-12 w-12 text-slate-300" />} title="Aún no tienes pedidos" text="Cuando pidas, los verás aquí." />
+            )}
+          </div>
+          <div className={pane("cuenta")}>
+            <Link href="/cuenta" className="card flex items-center justify-between p-4">
+              <span className="font-bold">Mi cuenta y mi PIN</span>
+              <span className="text-sm font-bold text-agua-700">Ver →</span>
+            </Link>
         {profile.role === "cliente" && !profile.is_admin && (
           <section className="space-y-2 pb-4 pt-2">
             <p className="text-center text-sm text-slate-500">¿Ya no quieres usar AguaGasExpress?</p>
             <BajaButton />
           </section>
         )}
+          </div>
+        </div>
       </main>
     </div>
   );

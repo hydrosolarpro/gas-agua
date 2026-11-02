@@ -56,11 +56,11 @@ function RegistroForm() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-agua-50 to-white px-5 py-8">
+    <main className="flex min-h-dvh flex-col items-center bg-gradient-to-b from-agua-50 to-white px-5 py-[clamp(0.5rem,2.5dvh,2rem)]">
       <Link href="/">
         <Logo />
       </Link>
-      <div className="card mt-8 w-full max-w-md p-6">
+      <div className="card mt-[clamp(0.5rem,2.5dvh,2rem)] w-full max-w-md p-[clamp(1rem,2.8dvh,1.5rem)]">
         {step === "datos" && <AuthTabs active="registro" next={next} />}
         <p className="text-sm font-semibold text-agua-700">
           Paso {step === "datos" ? 1 : step === "pin" ? 2 : 3} de 3
@@ -116,7 +116,7 @@ function RegistroForm() {
           )}
         </div>
       </div>
-      <p className="mt-6 text-sm text-slate-600">
+      <p className="mt-[clamp(0.5rem,2dvh,1.5rem)] text-sm text-slate-600">
         ¿Ya tienes cuenta?{" "}
         <Link href="/ingresar" className="font-bold text-agua-700">
           Ingresa aquí

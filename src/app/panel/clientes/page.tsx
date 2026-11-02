@@ -103,7 +103,7 @@ export default function Clientes() {
   const active = invites.filter((i) => !i.revoked && new Date(i.expires_at) > new Date());
 
   return (
-    <main className="mx-auto max-w-3xl space-y-5 p-4 md:p-8">
+    <main className="mx-auto max-w-6xl space-y-3 p-3 md:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold">Mis clientes</h1>
         <button onClick={() => setOpen(true)} className="btn-gas px-4 py-2.5 text-sm">
@@ -131,7 +131,7 @@ export default function Clientes() {
           action={<button onClick={() => setOpen(true)} className="btn-gas">Invitar clientes</button>}
         />
       )}
-      <div className="space-y-3">
+      <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
         {list.map((c) => {
           const otroDueno = c.profile?.role === "dueno" && c.customer_id !== business.owner_id;
           const baja = Boolean(c.profile?.deactivated_at);

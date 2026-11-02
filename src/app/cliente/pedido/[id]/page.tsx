@@ -19,6 +19,8 @@ import type { Business } from "@/lib/types";
 
 type Person = { full_name: string; phone: string | null };
 
+type Tab = "seguimiento" | "pago" | "detalle";
+
 export default function SeguimientoPage() {
   const { id } = useParams<{ id: string }>();
   const { loading } = useSession(["cliente"]);
@@ -26,6 +28,7 @@ export default function SeguimientoPage() {
   const [business, setBusiness] = useState<Business | null>(null);
   const [driver, setDriver] = useState<Person | null>(null);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState<Tab>("seguimiento");
 
   const tracking = order && (order.status === "aceptado" || order.status === "en_camino");
   const driverLoc = useDriverLocation(tracking ? order.driver_id : null);
@@ -39,6 +42,9 @@ export default function SeguimientoPage() {
     if (arrivedNow) setArrivedSeen(true); // eslint-disable-line react-hooks/set-state-in-effect
   }, [arrivedNow]);
   const arrived = arrivedSeen || arrivedNow;
+  useEffect(() => {
+    if (arrivedNow) setTab("pago"); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [arrivedNow]);
 
   useEffect(() => {
     if (!order) return;
@@ -81,22 +87,48 @@ export default function SeguimientoPage() {
   // El pago se muestra cuando llega el repartidor y se mantiene mientras se valida.
   const showPay = arrived || order.payment_status !== "pendiente" || order.status === "entregado";
 
-  return (
-    <div className="min-h-dvh pb-8">
-      <TopBar title={`Pedido #${order.code}`} back="/cliente" />
-      <div className="relative">
-        <Map
-          center={driverPoint ?? { lat: order.lat, lng: order.lng }}
-          zoom={16}
-          className="h-[46dvh]"
-          markers={markers}
-          route={tracking ? route?.points : undefined}
-          fitKey={`${order.status}-${driverPoint ? "con" : "sin"}`}
-        />
-      </div>
+  const TABS: { id: Tab; label: string; dot?: boolean }[] = [
+    { id: "seguimiento", label: "Seguimiento" },
+    { id: "pago", label: "Pago", dot: arrived && order.payment_status === "pendiente" },
+    { id: "detalle", label: "Detalle" },
+  ];
+  const pane = (t: Tab) => (tab === t ? "block space-y-3" : "hidden");
 
-      <main className="relative z-10 mx-auto -mt-8 max-w-lg space-y-4 px-4">
-        <section className="card p-5">
+  // Mapa y datos lado a lado en pantallas grandes; en celular, mapa arriba y una sección a la vez abajo.
+  return (
+    <div className="flex h-full flex-col">
+      <TopBar title={`Pedido #${order.code}`} back="/cliente" />
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="relative h-[30dvh] shrink-0 lg:h-auto lg:flex-1">
+          <Map
+            center={driverPoint ?? { lat: order.lat, lng: order.lng }}
+            zoom={16}
+            className="h-full"
+            markers={markers}
+            route={tracking ? route?.points : undefined}
+            fitKey={`${order.status}-${driverPoint ? "con" : "sin"}`}
+          />
+        </div>
+
+        <aside className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-3 lg:w-[26rem] lg:flex-none lg:border-l lg:border-slate-200">
+          <div className="flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={tab === t.id}
+                onClick={() => setTab(t.id)}
+                className={`relative flex-1 rounded-xl px-2 py-2 text-sm font-bold transition ${tab === t.id ? "bg-white text-agua-700 shadow-sm" : "text-slate-500"}`}
+              >
+                {t.label}
+                {t.dot && <span className="absolute right-2 top-1.5 h-2.5 w-2.5 rounded-full bg-emerald-500" aria-label="Novedad" />}
+              </button>
+            ))}
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className={pane("seguimiento")}>
+        <section className="card p-4">
           <p className="text-2xl font-extrabold">{headline.title}</p>
           <p className="text-slate-600">{headline.text}</p>
           <div className="mt-5">
@@ -132,6 +164,9 @@ export default function SeguimientoPage() {
           </section>
         )}
 
+            </div>
+
+            <div className={pane("pago")}>
         <section className="card space-y-3 p-5">
           <div className="flex items-center justify-between">
             <h2 className="font-bold">Pago contra-entrega</h2>
@@ -164,6 +199,9 @@ export default function SeguimientoPage() {
 
         {showPay && order.status !== "cancelado" && order.payment_method !== "efectivo" && <OrderProofsClient order={order} />}
 
+            </div>
+
+            <div className={pane("detalle")}>
         <section className="card space-y-3 p-5">
           <h2 className="font-bold">Detalle</h2>
           <OrderItems order={order} />
@@ -184,7 +222,10 @@ export default function SeguimientoPage() {
             Cancelar pedido
           </button>
         )}
-      </main>
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

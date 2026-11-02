@@ -80,7 +80,7 @@ export default function RepartidoresPage() {
     );
 
   return (
-    <main className="mx-auto max-w-3xl space-y-4 p-4 md:p-8">
+    <main className="mx-auto max-w-6xl space-y-3 p-3 md:p-5">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-extrabold">Mi equipo</h1>
         <button
@@ -112,7 +112,7 @@ export default function RepartidoresPage() {
       )}
 
       {drivers.length === 0 && <Empty icon={<Bike className="h-12 w-12 text-slate-300" />} title="Aún no tienes repartidores" text="También puedes repartir tú mismo desde la vista de pedidos." />}
-      <div className="space-y-3">
+      <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
         {drivers.map((d) => {
           const yo = d.user_id === profile.id;
           const pendiente = !d.accepted;

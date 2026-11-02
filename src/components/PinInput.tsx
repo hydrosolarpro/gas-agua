@@ -25,7 +25,7 @@ export function PinInput({
     <div>
       <p className="label text-center">{label}</p>
       <div
-        className="mb-4 flex justify-center gap-3"
+        className="mb-[clamp(0.5rem,1.8dvh,1rem)] flex justify-center gap-[clamp(0.4rem,1.5dvh,0.75rem)]"
         tabIndex={0}
         onKeyDown={(e) => {
           if (/^\d$/.test(e.key)) press(e.key);
@@ -36,7 +36,7 @@ export function PinInput({
         {[0, 1, 2, 3].map((i) => (
           <span
             key={i}
-            className={`flex h-14 w-12 items-center justify-center rounded-2xl border-2 text-2xl font-bold transition ${
+            className={`flex h-[clamp(2.1rem,6dvh,3.5rem)] w-[clamp(2.2rem,5.4dvh,3rem)] items-center justify-center rounded-2xl border-2 text-2xl font-bold transition ${
               value.length > i ? "border-agua-500 bg-agua-50 text-agua-700" : "border-slate-200 bg-white"
             }`}
           >
@@ -44,20 +44,20 @@ export function PinInput({
           </span>
         ))}
       </div>
-      <div className="mx-auto grid max-w-xs grid-cols-3 gap-2.5">
+      <div className="mx-auto grid max-w-xs grid-cols-3 gap-[clamp(0.3rem,1.2dvh,0.625rem)]">
         {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
-          <button key={d} type="button" onClick={() => press(d)} className="btn-ghost h-14 text-xl">
+          <button key={d} type="button" onClick={() => press(d)} className="btn-ghost !px-0 !py-0 h-[clamp(2.1rem,6.2dvh,3.5rem)] text-xl">
             {d}
           </button>
         ))}
         <span />
-        <button type="button" onClick={() => press("0")} className="btn-ghost h-14 text-xl">
+        <button type="button" onClick={() => press("0")} className="btn-ghost !px-0 !py-0 h-[clamp(2.1rem,6.2dvh,3.5rem)] text-xl">
           0
         </button>
         <button
           type="button"
           onClick={() => onChange(value.slice(0, -1))}
-          className="btn h-14 text-slate-500 hover:bg-slate-100"
+          className="btn !px-0 !py-0 h-[clamp(2.1rem,6.2dvh,3.5rem)] text-slate-500 hover:bg-slate-100"
           aria-label="Borrar"
         >
           <Delete className="h-6 w-6" />

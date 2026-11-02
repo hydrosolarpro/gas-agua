@@ -67,7 +67,7 @@ export function LiveMapDemo() {
 
   return (
     <div
-      className="card relative overflow-hidden p-5"
+      className="card relative overflow-hidden p-[clamp(0.75rem,2dvh,1.25rem)]"
       onPointerEnter={() => (pausedRef.current = true)}
       onPointerLeave={() => (pausedRef.current = false)}
     >
@@ -82,8 +82,8 @@ export function LiveMapDemo() {
         </span>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-2xl ring-1 ring-slate-200">
-        <svg viewBox="0 0 400 260" className="block h-auto w-full select-none" role="img" aria-label="Mapa de ejemplo: el repartidor avanza del negocio a tu casa">
+      <div className="mt-[clamp(0.4rem,1.2dvh,1rem)] overflow-hidden rounded-2xl ring-1 ring-slate-200">
+        <svg viewBox="0 0 400 260" className="mx-auto block h-auto max-h-[clamp(5rem,16dvh,22rem)] w-full select-none" role="img" aria-label="Mapa de ejemplo: el repartidor avanza del negocio a tu casa">
           <defs>
             <pattern id="grain" width="8" height="8" patternUnits="userSpaceOnUse">
               <circle cx="1" cy="1" r="0.6" fill="#cbd8e6" opacity="0.5" />
@@ -153,12 +153,12 @@ export function LiveMapDemo() {
         </svg>
       </div>
 
-      <div className="mt-4 flex items-center justify-between rounded-2xl bg-slate-50 p-3">
+      <div className="mt-[clamp(0.4rem,1.2dvh,1rem)] flex items-center justify-between rounded-2xl bg-slate-50 p-[clamp(0.4rem,1.2dvh,0.75rem)]">
         <div>
           <span ref={etaLabelRef} className="block text-sm text-slate-500">
             Llega en
           </span>
-          <span ref={etaRef} className="block text-2xl font-extrabold text-agua-700 tabular-nums">
+          <span ref={etaRef} className="block text-[clamp(1.1rem,3dvh,1.5rem)] font-extrabold leading-tight text-agua-700 tabular-nums">
             6 min
           </span>
         </div>
