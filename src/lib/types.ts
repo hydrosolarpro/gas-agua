@@ -122,6 +122,9 @@ export type Order = {
   delivered_at: string | null;
   cancelled_at: string | null;
   payment_reported_at: string | null;
+  eta_at: string | null;
+  eta_minutes: number | null;
+  arrived_at: string | null;
   payment_validated_at: string | null;
   order_items?: OrderItem[];
 };

@@ -1,4 +1,5 @@
 import { fmtDateTime, fmtDay } from "@/lib/plan";
+import { clock, etaVerdict, fmtMin, traceTimes, type TraceInput } from "@/lib/trace";
 
 export type CancelledRow = {
   code: string;
@@ -19,7 +20,8 @@ export type CustomerStat = {
   cancelled: number;
   spent: number;
 };
-export type Summary = { orders: number; delivered: number; cancelled: number; cancelledAmount: number; validated: number; newCustomers: number; activeCustomers: number };
+export type DeliveryRow = TraceInput & { code: string; customer: string; driver: string; total: number };
+export type Summary = { avgDeliveryMin: number | null; orders: number; delivered: number; cancelled: number; cancelledAmount: number; validated: number; newCustomers: number; activeCustomers: number };
 
 const sol = (n: number) => `S/ ${n.toFixed(2)}`;
 
@@ -30,6 +32,7 @@ export async function downloadStatsPdf(opts: {
   summary: Summary;
   cancelled: CancelledRow[];
   customers: CustomerStat[];
+  deliveries: DeliveryRow[];
 }) {
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
@@ -50,6 +53,7 @@ export async function downloadStatsPdf(opts: {
     body: [
       ["Pedidos recibidos", String(s.orders)],
       ["Pedidos entregados", String(s.delivered)],
+      ["Tiempo medio de entrega (recibido a entregado)", s.avgDeliveryMin === null ? "—" : fmtMin(s.avgDeliveryMin)],
       ["Pedidos cancelados", `${s.cancelled} (${sol(s.cancelledAmount)} en pedidos no concretados)`],
       ["Ventas con pago validado", sol(s.validated)],
       ["Clientes nuevos", String(s.newCustomers)],
@@ -73,6 +77,23 @@ export async function downloadStatsPdf(opts: {
     theme: "striped",
     headStyles: { fillColor: [225, 29, 72] },
     styles: { fontSize: 8.5, cellPadding: 4 },
+    margin: { left: 40, right: 40 },
+  });
+
+  const afterCancelled0 = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+  doc.setFont("helvetica", "bold").setFontSize(13).text(`Entregas realizadas y sus tiempos (${opts.deliveries.length})`, 40, afterCancelled0 + 28);
+  autoTable(doc, {
+    startY: afterCancelled0 + 36,
+    head: [["Pedido", "Cliente", "Repartidor", "Recibido", "Aceptado", "Salió", "Llegó", "Entregado", "Camino", "Vs. estimado", "Total"]],
+    body: opts.deliveries.length
+      ? opts.deliveries.map((d) => {
+          const t = traceTimes(d);
+          return [`#${d.code}`, d.customer, d.driver, clock(d.created_at), clock(d.accepted_at), clock(d.picked_at), clock(d.arrived_at), clock(d.delivered_at), fmtMin(t.ruta), etaVerdict(t.vsEstimado), fmtMin(t.total)];
+        })
+      : [["Sin entregas en este período", "", "", "", "", "", "", "", "", "", ""]],
+    theme: "striped",
+    headStyles: { fillColor: [16, 185, 129] },
+    styles: { fontSize: 7.5, cellPadding: 3 },
     margin: { left: 40, right: 40 },
   });
 

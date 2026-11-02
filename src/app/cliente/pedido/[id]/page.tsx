@@ -9,6 +9,7 @@ import Map, { type MapMarker } from "@/components/map/Map";
 import { OrderItems, OrderTimeline } from "@/components/orders";
 import { OrderProofsClient } from "@/components/OrderProofs";
 import { CopyField } from "@/components/CopyField";
+import { EtaCard, etaClock } from "@/components/Eta";
 import { Empty, ErrorText, FullLoader, MethodBadge, PayBadge, TopBar } from "@/components/ui";
 import { hasArrived } from "@/lib/arrival";
 import { errorMessage, money, telLink, waLink } from "@/lib/format";
@@ -71,10 +72,11 @@ export default function SeguimientoPage() {
   const payNumber =
     order.payment_method === "yape" ? business?.yape_number : order.payment_method === "plin" ? business?.plin_number : order.payment_method === "otro" ? business?.other_pay_value : null;
 
+  const etaTime = order.status === "en_camino" && order.eta_at ? etaClock(order.eta_at) : null;
   const base = {
     pendiente: { title: "Buscando repartidor…", text: `${business?.name ?? "El negocio"} está revisando tu pedido.` },
     aceptado: { title: "¡Pedido aceptado!", text: `${driver?.full_name ?? "Tu repartidor"} está preparando tu pedido.` },
-    en_camino: { title: route ? `Llega en ${formatEta(route.durationS)}` : "¡Va en camino!", text: route ? `A ${formatDistance(route.distanceM)} de tu puerta` : `${driver?.full_name ?? "Tu repartidor"} ya salió hacia tu dirección.` },
+    en_camino: { title: etaTime ? `Llega a las ${etaTime}` : route ? `Llega en ${formatEta(route.durationS)}` : "¡Va en camino!", text: route ? `A ${formatDistance(route.distanceM)} de tu puerta` : `${driver?.full_name ?? "Tu repartidor"} ya salió hacia tu dirección.` },
     entregado: { title: "¡Entregado!", text: "Gracias por tu pedido." },
     cancelado: { title: "Pedido cancelado", text: order.cancel_reason ?? "" },
   }[order.status];
@@ -129,6 +131,7 @@ export default function SeguimientoPage() {
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div className={pane("seguimiento")}>
+              <EtaCard order={order} />
         <section className="card p-4">
           <p className="text-2xl font-extrabold">{headline.title}</p>
           <p className="text-slate-600">{headline.text}</p>

@@ -3,13 +3,15 @@
 import { Bike, CircleCheck, Hand, House, MapPin, MethodMark, Search, StickyNote, TriangleAlert } from "@/components/icons";
 
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MessageCircle, Navigation, Phone } from "lucide-react";
 import Map, { type MapMarker } from "@/components/map/Map";
 import { OrderItems } from "@/components/orders";
 import { Empty, ErrorText, FullLoader, MethodBadge, Sheet, Spinner, StatusBadge, TopBar } from "@/components/ui";
 import { errorMessage, METHOD, money, telLink, waLink } from "@/lib/format";
-import { formatDistance, formatEta, googleMapsLink, wazeLink } from "@/lib/geo";
+import { distanceM, formatDistance, formatEta, googleMapsLink, wazeLink } from "@/lib/geo";
+import { EtaCard } from "@/components/Eta";
+import { hasArrived } from "@/lib/arrival";
 import { useOrder, useRoute, useSession, useShareLocation } from "@/lib/hooks";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { PaymentMethod } from "@/lib/types";
@@ -43,6 +45,30 @@ export default function EntregaPage() {
     await reload();
     setBusy(false);
     return !error;
+  }
+
+  // Al llegar al punto de entrega (a pocos metros) se registra la hora real de llegada, una sola vez.
+  const arrivalSent = useRef(false);
+  useEffect(() => {
+    if (!order || arrivalSent.current || order.status !== "en_camino" || order.arrived_at || !mine) return;
+    if (!hasArrived(position, destination)) return;
+    arrivalSent.current = true;
+    supabaseBrowser().rpc("mark_arrived", { p_order_id: order.id }).then(() => reload());
+  }, [order, mine, position, destination, reload]);
+
+  // Estimación al salir: por la ruta desde donde está el repartidor; sin GPS, por la distancia desde el local.
+  const estimateSeconds = (): number | null => {
+    if (route) return route.durationS;
+    if (business?.lat != null && business?.lng != null && destination) {
+      return (distanceM({ lat: business.lat, lng: business.lng }, destination) * 1.4) / 6;
+    }
+    return null;
+  };
+
+  async function startDelivery() {
+    if (!order) return;
+    const secs = estimateSeconds();
+    await rpc("start_delivery", { p_order_id: order.id, p_eta_seconds: secs ? Math.round(secs) : null });
   }
 
   async function confirmDelivery() {
@@ -102,6 +128,7 @@ export default function EntregaPage() {
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div className={pane("entrega")}>
+              <EtaCard order={order} />
         {sharing && (
           <section className="card p-3">
             {gps === "sin_permiso" ? (
@@ -177,8 +204,8 @@ export default function EntregaPage() {
           </button>
         )}
         {order.status === "aceptado" && mine && (
-          <button onClick={() => rpc("start_delivery", { p_order_id: order.id })} disabled={busy} className="cta-primary">
-            {busy ? <Spinner className="h-5 w-5" /> : <Bike className="h-5 w-5" />} Salir a entregar
+          <button onClick={startDelivery} disabled={busy} className="cta-primary">
+            {busy ? <Spinner className="h-5 w-5" /> : <Bike className="h-5 w-5" />} Salir a entregar{estimateSeconds() ? ` · ≈ ${formatEta(estimateSeconds()!)}` : ""}
           </button>
         )}
         {order.status === "en_camino" && mine && order.payment_status !== "reportado" && (

@@ -7,7 +7,8 @@ import { Empty, ErrorText, Spinner } from "@/components/ui";
 import { dateTime, money } from "@/lib/format";
 import { limaDate } from "@/lib/plan";
 import { RANGE_MODES, rangeBounds, resolveRange, type Range, type RangeMode } from "@/lib/stats";
-import { downloadStatsPdf, type CancelledRow, type CustomerStat, type Summary } from "@/lib/stats-pdf";
+import { downloadStatsPdf, type CancelledRow, type CustomerStat, type DeliveryRow, type Summary } from "@/lib/stats-pdf";
+import { clock, etaVerdict, fmtMin, minutesBetween, traceTimes } from "@/lib/trace";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 type OrderRow = {
@@ -29,7 +30,22 @@ type CancelledOrder = OrderRow & {
 };
 type Link = { customer_id: string; source: "invitacion" | "pedido"; created_at: string; profile: { full_name: string; phone: string | null } | null };
 
-type Report = { range: Range; summary: Summary; cancelled: CancelledRow[]; customers: CustomerStat[] };
+type DeliveredOrder = {
+  code: string;
+  customer_name: string;
+  total: number;
+  created_at: string;
+  accepted_at: string | null;
+  picked_at: string | null;
+  eta_minutes: number | null;
+  arrived_at: string | null;
+  payment_reported_at: string | null;
+  payment_validated_at: string | null;
+  delivered_at: string | null;
+  driver: { full_name: string } | null;
+};
+
+type Report = { range: Range; summary: Summary; cancelled: CancelledRow[]; customers: CustomerStat[]; deliveries: DeliveryRow[] };
 
 /** Trae todas las filas de una consulta paginando de a 1000 (límite del servidor). */
 async function all<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
@@ -49,7 +65,7 @@ export default function Estadisticas() {
   const [a, setA] = useState(today.slice(0, 7));
   const [b, setB] = useState(today.slice(0, 7));
   const [report, setReport] = useState<Report | null>(null);
-  const [rtab, setRtab] = useState<"cancelados" | "clientes">("cancelados");
+  const [rtab, setRtab] = useState<"entregas" | "cancelados" | "clientes">("entregas");
   const [loading, setLoading] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [error, setError] = useState("");
@@ -77,7 +93,7 @@ export default function Estadisticas() {
     try {
       const db = supabaseBrowser();
       const { since, until } = rangeBounds(r);
-      const [orders, cancelledOrders, links] = await Promise.all([
+      const [orders, cancelledOrders, links, deliveredOrders] = await Promise.all([
         all<OrderRow>((f, t) =>
           db
             .from("orders")
@@ -110,7 +126,36 @@ export default function Estadisticas() {
             .range(f, t)
             .returns<Link[]>(),
         ),
+        all<DeliveredOrder>((f, t) =>
+          db
+            .from("orders")
+            .select("code, customer_name, total, created_at, accepted_at, picked_at, eta_minutes, arrived_at, payment_reported_at, payment_validated_at, delivered_at, driver:profiles!orders_driver_id_fkey(full_name)")
+            .eq("business_id", business.id)
+            .eq("status", "entregado")
+            .gte("delivered_at", since)
+            .lt("delivered_at", until)
+            .order("delivered_at", { ascending: false })
+            .range(f, t)
+            .returns<DeliveredOrder[]>(),
+        ),
       ]);
+
+      const deliveries: DeliveryRow[] = deliveredOrders.map((o) => ({
+        code: o.code,
+        customer: o.customer_name || "Cliente",
+        driver: o.driver?.full_name ?? "—",
+        total: Number(o.total),
+        created_at: o.created_at,
+        accepted_at: o.accepted_at,
+        picked_at: o.picked_at,
+        eta_minutes: o.eta_minutes,
+        arrived_at: o.arrived_at,
+        payment_reported_at: o.payment_reported_at,
+        payment_validated_at: o.payment_validated_at,
+        delivered_at: o.delivered_at,
+      }));
+      const totals = deliveries.map((d) => minutesBetween(d.created_at, d.delivered_at)).filter((m): m is number => m !== null);
+      const avgDeliveryMin = totals.length ? Math.round(totals.reduce((a, b) => a + b, 0) / totals.length) : null;
 
       const cancelled: CancelledRow[] = cancelledOrders.map((o) => ({
         code: o.code,
@@ -152,6 +197,7 @@ export default function Estadisticas() {
         .sort((x, y) => y.spent - x.spent || y.orders - x.orders);
 
       const summary: Summary = {
+        avgDeliveryMin,
         orders: orders.length,
         delivered: orders.filter((o) => o.status === "entregado").length,
         cancelled: cancelled.length,
@@ -160,7 +206,7 @@ export default function Estadisticas() {
         newCustomers: links.filter((l) => joinedIn(l.created_at)).length,
         activeCustomers: perCustomer.size,
       };
-      setReport({ range: r, summary, cancelled, customers });
+      setReport({ range: r, summary, cancelled, customers, deliveries });
     } catch (e) {
       setError((e as Error).message || "No se pudieron cargar las estadísticas");
     }
@@ -175,7 +221,7 @@ export default function Estadisticas() {
     if (!report) return;
     setPdfBusy(true);
     try {
-      await downloadStatsPdf({ business: business.name, rangeLabel: report.range.label, summary: report.summary, cancelled: report.cancelled, customers: report.customers });
+      await downloadStatsPdf({ business: business.name, rangeLabel: report.range.label, summary: report.summary, cancelled: report.cancelled, customers: report.customers, deliveries: report.deliveries });
     } catch {
       setError("No se pudo generar el PDF");
     }
@@ -255,6 +301,7 @@ export default function Estadisticas() {
               {[
                 ["Pedidos", String(report.summary.orders), "text-ink"],
                 ["Entregados", String(report.summary.delivered), "text-emerald-600"],
+                ["Tiempo medio", fmtMin(report.summary.avgDeliveryMin), "text-indigo-600"],
                 ["Cancelados", String(report.summary.cancelled), "text-rose-600"],
                 ["Ventas validadas", money(report.summary.validated), "text-agua-700"],
                 ["No concretado", money(report.summary.cancelledAmount), "text-rose-600"],
@@ -270,6 +317,7 @@ export default function Estadisticas() {
 
             <div className="flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
               {[
+                { id: "entregas" as const, label: `Entregas (${report.deliveries.length})` },
                 { id: "cancelados" as const, label: `Cancelados (${report.cancelled.length})` },
                 { id: "clientes" as const, label: `Clientes (${report.customers.length})` },
               ].map((t) => (
@@ -286,6 +334,41 @@ export default function Estadisticas() {
             </div>
 
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+              {rtab === "entregas" && report.deliveries.length === 0 && <Empty icon={<FileText className="h-10 w-10 text-slate-300" />} title="Sin entregas en este período" />}
+              {rtab === "entregas" &&
+                report.deliveries.map((d) => {
+                  const t = traceTimes(d);
+                  return (
+                    <article key={d.code + d.delivered_at} className="card space-y-2 p-3">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="min-w-0 truncate font-bold">
+                          #{d.code} · {d.customer}
+                        </p>
+                        <p className="shrink-0 font-extrabold text-emerald-700">{fmtMin(t.total)}</p>
+                      </div>
+                      <p className="truncate text-sm text-slate-500">Repartidor: {d.driver} · {money(d.total)}</p>
+                      <dl className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-xl bg-slate-50 p-2.5 text-xs sm:grid-cols-3">
+                        {[
+                          ["Recibido", clock(d.created_at)],
+                          ["Aceptado", clock(d.accepted_at)],
+                          ["Salió", clock(d.picked_at)],
+                          ["Llegó", clock(d.arrived_at)],
+                          ["Pago validado", clock(d.payment_validated_at)],
+                          ["Entregado", clock(d.delivered_at)],
+                        ].map(([k, v]) => (
+                          <div key={k}>
+                            <dt className="text-slate-500">{k}</dt>
+                            <dd className="font-semibold">{v}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                      <p className="text-xs font-semibold text-agua-700">
+                        Camino: {fmtMin(t.ruta)}
+                        {d.eta_minutes ? ` (estimado ${fmtMin(d.eta_minutes)} · ${etaVerdict(t.vsEstimado)})` : ""}
+                      </p>
+                    </article>
+                  );
+                })}
               {rtab === "cancelados" && report.cancelled.length === 0 && <Empty icon={<FileText className="h-10 w-10 text-slate-300" />} title="Sin pedidos cancelados en este período" />}
               {rtab === "cancelados" &&
                 report.cancelled.map((c) => (

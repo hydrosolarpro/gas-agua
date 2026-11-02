@@ -10,6 +10,8 @@ import Map from "@/components/map/Map";
 import { OrderItems, OrderRow, OrderTimeline } from "@/components/orders";
 import { Empty, ErrorText, FullLoader, MethodBadge, PayBadge, Sheet, Spinner, StatusBadge } from "@/components/ui";
 import { useBusinessOrders, useDrivers } from "@/components/useBusinessOrders";
+import { EtaCard } from "@/components/Eta";
+import { Traza } from "@/components/Traza";
 import { ACTIVE_STATUSES, dateTime, errorMessage, money, telLink, waLink } from "@/lib/format";
 import { useDriverLocation } from "@/lib/hooks";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -63,6 +65,8 @@ function OrderDetail({ order, onChanged }: { order: Order; onChanged: () => void
         {order.payment_status !== "pendiente" && <PayBadge status={order.payment_status} />}
         <span className="ml-auto text-xs text-slate-500">{dateTime(order.created_at)}</span>
       </div>
+
+      <EtaCard order={order} />
 
       {order.status !== "cancelado" && (order.status === "entregado" || order.payment_status === "reportado" || order.payment_status === "rechazado") && (
         <div className="rounded-2xl border-2 border-orange-200 bg-orange-50 p-4">
@@ -144,6 +148,8 @@ function OrderDetail({ order, onChanged }: { order: Order; onChanged: () => void
       {order.driver_id === profile.id && ACTIVE_STATUSES.includes(order.status) && order.status !== "pendiente" && (
         <a href={`/repartidor/pedido/${order.id}`} className="cta-primary"><Bike className="h-5 w-5" /> Abrir como repartidor</a>
       )}
+
+      <Traza order={order} driverName={driverName} />
 
       {(order.status === "pendiente" || order.status === "aceptado" || order.status === "en_camino") && (
         <button

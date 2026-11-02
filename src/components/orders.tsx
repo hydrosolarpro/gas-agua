@@ -4,6 +4,7 @@ import { CategoryIcon } from "@/components/icons";
 
 import Link from "next/link";
 import { Check, ChevronRight } from "lucide-react";
+import { EtaInline } from "@/components/Eta";
 import { MethodBadge, PayBadge, StatusBadge } from "@/components/ui";
 import { dateTime, money, time } from "@/lib/format";
 import type { Order } from "@/lib/types";
@@ -107,6 +108,7 @@ export function OrderRow({ order, href, showCustomer }: { order: Order; href: st
         <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-500">
           <MethodBadge method={order.payment_method} />
           <span>{dateTime(order.created_at)}</span>
+          <EtaInline order={order} />
         </div>
       </div>
       <div className="text-right">
