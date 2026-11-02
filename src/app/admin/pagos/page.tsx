@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CircleCheck, CircleX, Wallet } from "@/components/icons";
 import { monthLabel, useAdmin } from "@/components/admin-context";
+import { ProofView } from "@/components/proof";
 import { Empty, ErrorText, FullLoader, Spinner } from "@/components/ui";
 import { dateTime, errorMessage, money } from "@/lib/format";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -83,6 +84,7 @@ export default function AdminPagos() {
               </p>
               <p className="text-xs text-slate-400">{dateTime(p.reported_at)}</p>
             </div>
+            <ProofView path={p.proof_path} caption={`${nameOf(p.business_id)} · ${money(p.amount)}`} />
             <p className="text-lg font-extrabold">{money(p.amount)}</p>
             {p.status === "pendiente" && (
               <div className="flex gap-2">

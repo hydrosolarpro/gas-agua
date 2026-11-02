@@ -5,6 +5,7 @@ import { Check, Copy, MessageCircle } from "lucide-react";
 import { STATUS_LABEL, monthLabel } from "@/components/admin-context";
 import { SUB_METHODS, periodOptions } from "@/components/admin-sheets";
 import { usePanel } from "@/components/panel-context";
+import { ProofPicker, ProofView, uploadProof } from "@/components/proof";
 import { Empty, ErrorText, FullLoader, Sheet, Spinner } from "@/components/ui";
 import { useSubscription } from "@/components/useSubscription";
 import { Wallet } from "@/components/icons";
@@ -45,6 +46,8 @@ export default function Suscripcion() {
   const [forPeriod, setForPeriod] = useState(period);
   const [method, setMethod] = useState("yape");
   const [code, setCode] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [attachId, setAttachId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -57,17 +60,41 @@ export default function Suscripcion() {
     if (!(value > 0)) return setError("Escribe el monto que pagaste");
     setSaving(true);
     setError("");
+    let proof: string | null = null;
+    try {
+      if (file) proof = await uploadProof("subs", business.id, file);
+    } catch (err) {
+      setSaving(false);
+      return setError((err as Error).message);
+    }
     const { error: e } = await supabaseBrowser().rpc("report_subscription_payment", {
       p_amount: value,
       p_period: forPeriod,
       p_method: method,
       p_code: code || null,
+      p_proof: proof,
     });
     setSaving(false);
     if (e) return setError(errorMessage(e));
     setOpen(false);
     setCode("");
+    setFile(null);
     await reload();
+  }
+
+  async function attach(paymentId: string, f: File | null) {
+    if (!f) return;
+    setAttachId(paymentId);
+    setError("");
+    try {
+      const path = await uploadProof("subs", business.id, f);
+      const { error: e } = await supabaseBrowser().rpc("attach_subscription_proof", { p_payment_id: paymentId, p_proof: path });
+      if (e) throw new Error(errorMessage(e));
+      await reload();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+    setAttachId(null);
   }
 
   return (
@@ -137,6 +164,16 @@ export default function Suscripcion() {
                 {p.operation_code ? ` · Op. ${p.operation_code}` : ""} · {dateTime(p.reported_at)}
               </p>
             </div>
+            {p.proof_path ? (
+              <ProofView path={p.proof_path} caption={`${monthLabel(p.period)} · ${money(p.amount)}`} />
+            ) : (
+              p.status !== "validado" && (
+                <label className="cursor-pointer text-xs font-bold text-agua-700">
+                  {attachId === p.id ? "Subiendo…" : "Adjuntar comprobante"}
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => attach(p.id, e.target.files?.[0] ?? null)} />
+                </label>
+              )
+            )}
             <div className="text-right">
               <p className="font-extrabold">{money(p.amount)}</p>
               <span className={`chip ${TONE[p.status]}`}>{NAME[p.status]}</span>
@@ -179,6 +216,7 @@ export default function Suscripcion() {
             <label className="label">Código de operación (opcional)</label>
             <input className="input" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej. 4821937" />
           </div>
+          <ProofPicker file={file} onChange={setFile} label="Captura o foto del pago (recomendado)" />
           <ErrorText>{error}</ErrorText>
           <button onClick={report} disabled={saving} className="btn-primary w-full">
             {saving && <Spinner className="h-5 w-5" />} Enviar aviso de pago

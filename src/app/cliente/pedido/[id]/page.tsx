@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Copy, MessageCircle, Phone } from "lucide-react";
 import Map, { type MapMarker } from "@/components/map/Map";
 import { OrderItems, OrderTimeline } from "@/components/orders";
+import { OrderProofsClient } from "@/components/OrderProofs";
 import { Empty, ErrorText, FullLoader, MethodBadge, PayBadge, TopBar } from "@/components/ui";
 import { errorMessage, money, telLink, waLink } from "@/lib/format";
 import { formatDistance, formatEta } from "@/lib/geo";
@@ -140,6 +141,8 @@ export default function SeguimientoPage() {
             </p>
           )}
         </section>
+
+        {order.status !== "cancelado" && order.payment_method !== "efectivo" && <OrderProofsClient order={order} />}
 
         <section className="card space-y-3 p-5">
           <h2 className="font-bold">Detalle</h2>

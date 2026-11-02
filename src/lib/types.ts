@@ -43,6 +43,7 @@ export type SubscriptionPayment = {
   period: string;
   method: SubscriptionMethod;
   operation_code: string | null;
+  proof_path: string | null;
   status: "pendiente" | "validado" | "rechazado";
   reported_at: string;
   validated_at: string | null;
@@ -128,3 +129,14 @@ export type DriverLocation = {
 };
 
 export type LatLng = { lat: number; lng: number };
+
+export type OrderProof = {
+  id: string;
+  order_id: string;
+  concept: "gas" | "agua" | "otro";
+  method: "yape" | "plin" | "transferencia" | "otro";
+  amount: number;
+  operation_code: string | null;
+  proof_path: string;
+  created_at: string;
+};

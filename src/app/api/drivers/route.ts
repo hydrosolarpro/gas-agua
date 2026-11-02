@@ -45,10 +45,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, estado: "nuevo" });
   }
 
-  if (existing.id === guard.ownerId) return NextResponse.json({ error: "Ese es tu propio celular" }, { status: 400 });
-  if (existing.role === "dueno" || existing.is_admin) {
-    return NextResponse.json({ error: "Ese celular pertenece a un dueño de negocio o al administrador" }, { status: 400 });
-  }
   const { data: member } = await db
     .from("business_members")
     .select("accepted")
@@ -58,12 +54,14 @@ export async function POST(request: Request) {
   if (member) {
     return NextResponse.json({ error: member.accepted ? "Ya está en tu equipo" : "Ya le enviaste la invitación" }, { status: 409 });
   }
-  // Cuenta que ya existe: no se le cambia nada hasta que la propia persona acepte.
+  // Cuenta que ya existe (cliente, dueño o administrador): no se le cambia nada hasta que la propia persona acepte.
+  // Si es el propio dueño, no hay a quién pedirle permiso: queda en su equipo de inmediato.
+  const propio = existing.id === guard.ownerId;
   const { error } = await db
     .from("business_members")
-    .insert({ business_id: guard.businessId, user_id: existing.id, active: false, accepted: false });
+    .insert({ business_id: guard.businessId, user_id: existing.id, active: propio, accepted: propio });
   if (error) return NextResponse.json({ error: "No se pudo enviar la invitación" }, { status: 500 });
-  return NextResponse.json({ ok: true, estado: "invitado" });
+  return NextResponse.json({ ok: true, estado: propio ? "nuevo" : "invitado" });
 }
 
 // Reiniciar el acceso de un repartidor (olvidó su PIN): vuelve a crear uno al entrar, durante 72 horas.

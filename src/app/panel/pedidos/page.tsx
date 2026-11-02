@@ -1,5 +1,6 @@
 "use client";
 
+import { OrderProofsOwner } from "@/components/OrderProofs";
 import { Bike, CircleCheck, CircleX, Hand, Inbox, MapPin, StickyNote } from "@/components/icons";
 
 import { useSearchParams } from "next/navigation";
@@ -89,6 +90,7 @@ function OrderDetail({ order, onChanged }: { order: Order; onChanged: () => void
       </div>
 
       <OrderItems order={order} />
+      <OrderProofsOwner order={order} />
 
       {order.status === "entregado" && (
         <div className="rounded-2xl border-2 border-orange-200 bg-orange-50 p-4">
