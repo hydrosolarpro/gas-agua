@@ -17,7 +17,7 @@ import type { PaymentMethod } from "@/lib/types";
 export default function EntregaPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { loading, profile, business } = useSession(["repartidor", "dueno"]);
+  const { loading, profile, business } = useSession(["repartidor"]);
   const { order, reload } = useOrder(id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

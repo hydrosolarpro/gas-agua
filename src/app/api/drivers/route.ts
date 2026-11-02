@@ -1,22 +1,23 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
-import { createPinUser, isWeakPin, PHONE_RE, PIN_RE, WEAK_PIN_MESSAGE } from "@/lib/pin";
+import { createPendingDriver, PHONE_RE, randomPassword, SETUP_HOURS } from "@/lib/pin";
 
-// El dueño da de alta a un repartidor que entrará con celular + PIN.
-export async function POST(request: Request) {
-  const { fullName, phone, pin } = (await request.json().catch(() => ({}))) as {
-    fullName?: string;
-    phone?: string;
-    pin?: string;
-  };
-
+/** Devuelve el negocio del dueño que llama (comprobado en el servidor con su sesión). */
+async function ownerBusiness() {
   const supabase = await supabaseServer();
   const { data } = await supabase.auth.getUser();
-  if (!data.user) return NextResponse.json({ error: "Inicia sesión primero" }, { status: 401 });
+  if (!data.user) return { error: NextResponse.json({ error: "Inicia sesión primero" }, { status: 401 }) };
+  const { data: business } = await supabaseAdmin().from("businesses").select("id").eq("owner_id", data.user.id).maybeSingle();
+  if (!business) return { error: NextResponse.json({ error: "Solo el dueño del negocio puede gestionar repartidores" }, { status: 403 }) };
+  return { ownerId: data.user.id, businessId: business.id };
+}
 
-  const admin = supabaseAdmin();
-  const { data: business } = await admin.from("businesses").select("id").eq("owner_id", data.user.id).maybeSingle();
-  if (!business) return NextResponse.json({ error: "Solo el dueño del negocio puede agregar repartidores" }, { status: 403 });
+// El dueño registra un repartidor con solo nombre y celular. Él mismo crea su PIN al entrar por primera vez.
+// Si el celular ya tenía cuenta, queda una invitación que esa persona debe aceptar.
+export async function POST(request: Request) {
+  const guard = await ownerBusiness();
+  if (guard.error) return guard.error;
+  const { fullName, phone } = (await request.json().catch(() => ({}))) as { fullName?: string; phone?: string };
 
   const name = fullName?.trim() ?? "";
   if (name.length < 2) return NextResponse.json({ error: "Escribe el nombre del repartidor" }, { status: 400 });
@@ -24,32 +25,94 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "El celular debe tener 9 dígitos y empezar con 9" }, { status: 400 });
   }
 
-  const { data: existing } = await admin.from("profiles").select("id, role").eq("phone", phone).maybeSingle();
-  let userId: string;
-  if (existing) {
-    // Solo se puede sumar a quien ya es repartidor. Una cuenta de cliente o de dueño no se convierte sin su consentimiento.
-    if (existing.id === data.user.id || existing.role !== "repartidor") {
-      return NextResponse.json(
-        { error: "Ese celular ya tiene una cuenta en AguaGasExpress. Usa otro número para el repartidor." },
-        { status: 400 },
-      );
-    }
-    userId = existing.id;
-    await admin.from("profiles").update({ role: "repartidor", onboarded: true }).eq("id", userId);
-  } else {
-    if (!pin || !PIN_RE.test(pin)) return NextResponse.json({ error: "El PIN debe tener 4 dígitos" }, { status: 400 });
-    if (isWeakPin(pin)) return NextResponse.json({ error: WEAK_PIN_MESSAGE }, { status: 400 });
+  const db = supabaseAdmin();
+  const { data: existing } = await db.from("profiles").select("id, role, is_admin").eq("phone", phone).maybeSingle();
+
+  if (!existing) {
+    let userId: string;
     try {
-      userId = await createPinUser(name, phone, pin);
+      userId = await createPendingDriver(name, phone);
     } catch (e) {
       return NextResponse.json({ error: (e as Error).message }, { status: 400 });
     }
-    await admin.from("profiles").update({ role: "repartidor", onboarded: true }).eq("id", userId);
+    const { error } = await db
+      .from("business_members")
+      .upsert({ business_id: guard.businessId, user_id: userId, active: true, accepted: true });
+    if (error) {
+      await db.auth.admin.deleteUser(userId);
+      return NextResponse.json({ error: "No se pudo agregar al repartidor" }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, estado: "nuevo" });
   }
 
-  const { error } = await admin
+  if (existing.id === guard.ownerId) return NextResponse.json({ error: "Ese es tu propio celular" }, { status: 400 });
+  if (existing.role === "dueno" || existing.is_admin) {
+    return NextResponse.json({ error: "Ese celular pertenece a un dueño de negocio o al administrador" }, { status: 400 });
+  }
+  const { data: member } = await db
     .from("business_members")
-    .upsert({ business_id: business.id, user_id: userId, active: true });
-  if (error) return NextResponse.json({ error: "No se pudo agregar al repartidor" }, { status: 500 });
-  return NextResponse.json({ ok: true, existing: Boolean(existing) });
+    .select("accepted")
+    .eq("business_id", guard.businessId)
+    .eq("user_id", existing.id)
+    .maybeSingle();
+  if (member) {
+    return NextResponse.json({ error: member.accepted ? "Ya está en tu equipo" : "Ya le enviaste la invitación" }, { status: 409 });
+  }
+  // Cuenta que ya existe: no se le cambia nada hasta que la propia persona acepte.
+  const { error } = await db
+    .from("business_members")
+    .insert({ business_id: guard.businessId, user_id: existing.id, active: false, accepted: false });
+  if (error) return NextResponse.json({ error: "No se pudo enviar la invitación" }, { status: 500 });
+  return NextResponse.json({ ok: true, estado: "invitado" });
+}
+
+// Reiniciar el acceso de un repartidor (olvidó su PIN): vuelve a crear uno al entrar, durante 72 horas.
+export async function PATCH(request: Request) {
+  const guard = await ownerBusiness();
+  if (guard.error) return guard.error;
+  const { userId } = (await request.json().catch(() => ({}))) as { userId?: string };
+  if (!userId) return NextResponse.json({ error: "Falta el repartidor" }, { status: 400 });
+
+  const db = supabaseAdmin();
+  const { data: member } = await db
+    .from("business_members")
+    .select("accepted")
+    .eq("business_id", guard.businessId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  const { data: p } = await db.from("profiles").select("role, is_admin").eq("id", userId).maybeSingle();
+  if (!member?.accepted || p?.role !== "repartidor" || p.is_admin) {
+    return NextResponse.json({ error: "No se puede reiniciar este acceso" }, { status: 400 });
+  }
+  const { error: pwError } = await db.auth.admin.updateUserById(userId, { password: randomPassword() });
+  if (pwError) return NextResponse.json({ error: "No se pudo reiniciar el acceso" }, { status: 500 });
+  const until = new Date(Date.now() + SETUP_HOURS * 3_600_000).toISOString();
+  await db.from("profiles").update({ has_pin: false, pin_setup_until: until }).eq("id", userId);
+  return NextResponse.json({ ok: true });
+}
+
+// Quitar a un repartidor del equipo (o anular una invitación pendiente).
+export async function DELETE(request: Request) {
+  const guard = await ownerBusiness();
+  if (guard.error) return guard.error;
+  const { userId } = (await request.json().catch(() => ({}))) as { userId?: string };
+  if (!userId) return NextResponse.json({ error: "Falta el repartidor" }, { status: 400 });
+
+  const db = supabaseAdmin();
+  const { data: member } = await db
+    .from("business_members")
+    .select("user_id")
+    .eq("business_id", guard.businessId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!member) return NextResponse.json({ error: "Ese repartidor no está en tu equipo" }, { status: 404 });
+  await db.from("business_members").delete().eq("business_id", guard.businessId).eq("user_id", userId);
+
+  // Si era una cuenta creada solo para este negocio y nunca llegó a activarse, se borra.
+  const { data: p } = await db.from("profiles").select("role, has_pin, is_admin").eq("id", userId).maybeSingle();
+  const { count } = await db.from("business_members").select("user_id", { count: "exact", head: true }).eq("user_id", userId);
+  if (p && p.role === "repartidor" && !p.has_pin && !p.is_admin && (count ?? 0) === 0) {
+    await db.auth.admin.deleteUser(userId);
+  }
+  return NextResponse.json({ ok: true });
 }

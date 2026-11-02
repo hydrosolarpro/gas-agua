@@ -18,7 +18,7 @@ type Person = { full_name: string; phone: string | null };
 
 export default function SeguimientoPage() {
   const { id } = useParams<{ id: string }>();
-  const { loading } = useSession(["cliente", "dueno", "repartidor"]);
+  const { loading } = useSession(["cliente"]);
   const { order } = useOrder(id);
   const [business, setBusiness] = useState<Business | null>(null);
   const [driver, setDriver] = useState<Person | null>(null);

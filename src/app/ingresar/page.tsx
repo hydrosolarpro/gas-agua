@@ -8,7 +8,7 @@ import { PhoneInput, PinInput } from "@/components/PinInput";
 import { AuthTabs } from "@/components/AuthTabs";
 import { Bike, Flame, Store } from "@/components/icons";
 import { ErrorText, Logo, Spinner } from "@/components/ui";
-import { appRole } from "@/lib/hooks";
+import { capabilities, rememberRole } from "@/lib/hooks";
 import { safePath } from "@/lib/safe-path";
 import type { AppRole, Role } from "@/lib/types";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -24,6 +24,100 @@ const ROLES: Record<Rol, { title: string; text: string; Icon: typeof Store }> = 
   admin: { title: "Administrador", text: "Panel de la plataforma.", Icon: ShieldCheck },
 };
 
+// Primer ingreso (o PIN reiniciado) de un repartidor o cliente: su negocio ya lo registró; aquí elige su propio PIN.
+function FirstTime({ phone, setPhone, next }: { phone: string; setPhone: (v: string) => void; next: string }) {
+  const router = useRouter();
+  const [step, setStep] = useState<"celular" | "pin" | "confirmar">(phone.length === 9 ? "pin" : "celular");
+  const [pin, setPin] = useState("");
+  const [pin2, setPin2] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(confirm: string) {
+    if (confirm !== pin) {
+      setError("Los PIN no coinciden. Vuelve a intentarlo.");
+      setPin("");
+      setPin2("");
+      setStep("pin");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    const res = await fetch("/api/driver/activar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, pin }),
+    });
+    const data = await res.json();
+    setBusy(false);
+    if (!res.ok) {
+      setError(data.error ?? "No se pudo crear tu PIN");
+      setPin("");
+      setPin2("");
+      setStep(res.status === 404 ? "celular" : "pin");
+      return;
+    }
+    if (data.ok) {
+      const rol: AppRole = data.rol === "repartidor" ? "repartidor" : "cliente";
+      rememberRole(rol);
+      router.replace(rol === "repartidor" ? "/repartidor" : next);
+      router.refresh();
+    } else {
+      router.replace("/ingresar");
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {step === "celular" && (
+        <>
+          <div>
+            <label className="label">Tu celular</label>
+            <PhoneInput value={phone} onChange={setPhone} />
+            <p className="mt-1 text-xs text-slate-500">El mismo número con el que tu negocio te registró.</p>
+          </div>
+          <ErrorText>{error}</ErrorText>
+          <button
+            onClick={() => (phone.length === 9 ? (setError(""), setStep("pin")) : setError("Escribe tu celular de 9 dígitos"))}
+            className="btn-primary w-full"
+          >
+            Continuar
+          </button>
+        </>
+      )}
+      {step === "pin" && (
+        <>
+          <p className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
+            Celular: <b>+51 {phone}</b>{" "}
+            <button onClick={() => setStep("celular")} className="font-bold text-agua-700">
+              Cambiar
+            </button>
+          </p>
+          <ErrorText>{error}</ErrorText>
+          <PinInput
+            value={pin}
+            onChange={setPin}
+            label="Crea tu PIN de 4 dígitos"
+            onComplete={() => {
+              setError("");
+              setStep("confirmar");
+            }}
+          />
+        </>
+      )}
+      {step === "confirmar" && (
+        <>
+          <PinInput value={pin2} onChange={setPin2} onComplete={submit} label="Repite tu PIN" />
+          {busy && (
+            <p className="flex items-center justify-center gap-2 text-sm text-slate-500">
+              <Spinner className="h-4 w-4" /> Guardando…
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 function IngresarForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -31,7 +125,8 @@ function IngresarForm() {
   const rolParam = params.get("rol");
   const rol: Rol = rolParam === "dueno" || rolParam === "repartidor" || rolParam === "admin" ? rolParam : "cliente";
   const { title, text, Icon } = ROLES[rol];
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(() => (/^9\d{8}$/.test(params.get("tel") ?? "") ? (params.get("tel") as string) : ""));
+  const [first, setFirst] = useState((rol === "repartidor" || rol === "cliente") && params.get("nuevo") === "1");
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState<"pin" | null>(null);
   const [error, setError] = useState("");
@@ -54,19 +149,21 @@ function IngresarForm() {
       setLoading(null);
       return;
     }
-    // Si entró por una puerta que no es la de su cuenta (p. ej. "Administrador" sin estar activado), se lo decimos.
-    if (rol !== "cliente") {
-      const db = supabaseBrowser();
-      const { data: u } = await db.auth.getUser();
-      const { data: p } = u.user
-        ? await db.from("profiles").select("role, is_admin").eq("id", u.user.id).single<{ role: Role; is_admin: boolean }>()
-        : { data: null };
-      if (p && appRole(p) !== rol) {
-        setMismatch(appRole(p));
+    // Una misma cuenta puede tener varios roles. Recordamos con cuál entra; si la cuenta no tiene ese rol, se lo decimos.
+    const db = supabaseBrowser();
+    const { data: u } = await db.auth.getUser();
+    const { data: p } = u.user
+      ? await db.from("profiles").select("role, is_admin").eq("id", u.user.id).single<{ role: Role; is_admin: boolean }>()
+      : { data: null };
+    if (p) {
+      const caps = capabilities(p);
+      if (!caps.includes(rol)) {
+        setMismatch(caps[0]);
         setPin("");
         setLoading(null);
         return;
       }
+      rememberRole(rol);
     }
     router.replace(next);
     router.refresh();
@@ -92,7 +189,28 @@ function IngresarForm() {
         </div>
 
         <div className="mt-6" />
-
+        {rol === "repartidor" && (
+          <div className="mb-5 flex gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
+            {[
+              { id: false, label: "Ingresar" },
+              { id: true, label: "Primera vez" },
+            ].map((tab) => (
+              <button
+                key={tab.label}
+                role="tab"
+                aria-selected={first === tab.id}
+                onClick={() => setFirst(tab.id)}
+                className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-bold transition ${first === tab.id ? "bg-white text-agua-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {first ? (
+          <FirstTime phone={phone} setPhone={setPhone} next={next} />
+        ) : (
+          <>
         <label className="label">Celular</label>
         <PhoneInput value={phone} onChange={setPhone} />
 
@@ -136,6 +254,8 @@ function IngresarForm() {
             {loading === "pin" && <Spinner className="h-5 w-5" />} Ingresar
           </button>
         </div>
+          </>
+        )}
       </div>
       <p className="mt-6 max-w-md text-center text-sm text-slate-600">
         {rol === "cliente" && (
@@ -144,10 +264,16 @@ function IngresarForm() {
             <Link href={`/registro?next=${encodeURIComponent(next)}`} className="font-bold text-agua-700">
               Crea tu cuenta con PIN
             </Link>
+            <span className="mt-2 block">
+              ¿Tu negocio reinició tu PIN?{" "}
+              <button onClick={() => setFirst((v) => !v)} className="font-bold text-agua-700">
+                {first ? "Volver a ingresar" : "Elige uno nuevo"}
+              </button>
+            </span>
           </>
         )}
         {rol === "dueno" && "¿Quieres usar AguaGasExpress en tu negocio? El administrador te envía una invitación para crear tu cuenta."}
-        {rol === "repartidor" && "¿Aún no tienes acceso? Tu dueño de negocio te registra y te da tu celular y tu PIN."}
+        {rol === "repartidor" && "¿Aún no tienes acceso? Tu dueño te registra con tu nombre y celular; luego creas tu PIN en «Primera vez»."}
         {rol === "admin" && (
           <>
             ¿Primera vez o olvidaste tu PIN?{" "}

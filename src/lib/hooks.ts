@@ -7,8 +7,37 @@ import { supabaseBrowser } from "./supabase/client";
 import { distanceM, fetchRoute, type Route } from "./geo";
 import type { AppRole, Business, DriverLocation, LatLng, Order, Profile } from "./types";
 
-/** Rol con el que se enruta a la persona: el administrador se identifica por `is_admin`. */
-export const appRole = (p: Pick<Profile, "role" | "is_admin">): AppRole => (p.is_admin ? "admin" : p.role);
+/**
+ * Una misma cuenta (celular + PIN) puede actuar con varios roles:
+ * todos pueden pedir como cliente; el dueño además gestiona su negocio y reparte; el administrador administra.
+ */
+export const capabilities = (p: Pick<Profile, "role" | "is_admin">): AppRole[] => {
+  const caps: AppRole[] = [];
+  if (p.is_admin) caps.push("admin");
+  if (p.role === "dueno") caps.push("dueno");
+  if (p.role === "dueno" || p.role === "repartidor") caps.push("repartidor");
+  caps.push("cliente");
+  return caps;
+};
+
+const ROLE_KEY = "rol_activo";
+
+/** Recuerda con qué rol está trabajando la persona en este dispositivo. */
+export function rememberRole(role: AppRole) {
+  try {
+    localStorage.setItem(ROLE_KEY, role);
+  } catch {}
+}
+
+/** Rol activo: el último elegido si la cuenta aún lo tiene; si no, el de mayor jerarquía. */
+export function preferredRole(p: Pick<Profile, "role" | "is_admin">): AppRole {
+  const caps = capabilities(p);
+  try {
+    const saved = localStorage.getItem(ROLE_KEY) as AppRole | null;
+    if (saved && caps.includes(saved)) return saved;
+  } catch {}
+  return caps[0];
+}
 
 /** Pantalla de inicio de cada rol. */
 export const homeFor = (role: AppRole) =>
@@ -67,7 +96,7 @@ export function useSession(roles?: AppRole[]): Session {
 
     if (rolesKey && profile) {
       if (!profile.onboarded) router.replace("/bienvenida");
-      else if (!rolesKey.split(",").includes(appRole(profile))) router.replace("/inicio");
+      else if (!rolesKey.split(",").some((r) => capabilities(profile).includes(r as AppRole))) router.replace("/inicio");
     }
   }, [router, rolesKey]);
 

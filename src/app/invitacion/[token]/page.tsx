@@ -63,7 +63,7 @@ export default function Invitacion() {
       setPin("");
       setPin2("");
       if (res.status === 410) setCheck({ valid: false });
-      else setStep(res.status === 409 ? "datos" : "pin");
+      else setStep(res.status === 409 && !/negocio registrado/i.test(data.error ?? "") ? "datos" : "pin");
       return;
     }
     router.replace(data.ok ? "/panel?nuevo=1" : "/ingresar?rol=dueno");
@@ -140,6 +140,7 @@ export default function Invitacion() {
                     setStep("confirmar");
                   }}
                 />
+                <p className="text-center text-xs text-slate-500">Si este celular ya tiene cuenta (por ejemplo, de cliente), escribe tu PIN actual.</p>
               </>
             )}
             {step === "confirmar" && (

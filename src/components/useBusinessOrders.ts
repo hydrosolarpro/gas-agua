@@ -36,14 +36,19 @@ export function useBusinessOrders(businessId: string, days = 14) {
   return { orders, reload: load };
 }
 
-export type Driver = { user_id: string; active: boolean; profiles: { full_name: string; phone: string | null } };
+export type Driver = {
+  user_id: string;
+  active: boolean;
+  accepted: boolean;
+  profiles: { full_name: string; phone: string | null; has_pin: boolean };
+};
 
 export function useDrivers(businessId: string) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const load = useCallback(async () => {
     const { data } = await supabaseBrowser()
       .from("business_members")
-      .select("user_id, active, profiles(full_name, phone)")
+      .select("user_id, active, accepted, profiles(full_name, phone, has_pin)")
       .eq("business_id", businessId)
       .returns<Driver[]>();
     setDrivers(data ?? []);

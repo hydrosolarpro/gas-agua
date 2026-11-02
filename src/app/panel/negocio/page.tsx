@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Copy, MessageCircle } from "lucide-react";
 import { LocationPicker, type PickedLocation } from "@/components/LocationPicker";
@@ -55,6 +56,14 @@ export default function NegocioPage() {
   return (
     <main className="mx-auto max-w-2xl space-y-5 p-4 md:p-8">
       <h1 className="text-2xl font-extrabold">Mi negocio</h1>
+
+      <Link href="/panel/suscripcion" className="card flex items-center justify-between gap-3 p-4">
+        <span>
+          <span className="block font-bold">Mi plan y pagos</span>
+          <span className="text-sm text-slate-600">Cuánto pagas, dónde pagar y tu historial.</span>
+        </span>
+        <span className="text-sm font-bold text-agua-700">Ver →</span>
+      </Link>
 
       <section className="card space-y-3 p-5">
         <h2 className="font-bold">Enlace de tu tienda</h2>

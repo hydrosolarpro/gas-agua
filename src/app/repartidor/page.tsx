@@ -13,7 +13,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Order } from "@/lib/types";
 
 export default function RepartidorPage() {
-  const { loading, profile, business } = useSession(["repartidor", "dueno"]);
+  const { loading, profile, business } = useSession(["repartidor"]);
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<string | null>(null);

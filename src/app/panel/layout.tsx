@@ -5,7 +5,7 @@ import { Store } from "@/components/icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { Bike, ClipboardList, CreditCard, LayoutDashboard, Package, Settings, UserRound } from "lucide-react";
+import { Bike, ClipboardList, CreditCard, LayoutDashboard, Package, Settings, UserRound, Users } from "lucide-react";
 import { FullLoader, Logo } from "@/components/ui";
 import { useSession } from "@/lib/hooks";
 import { PanelCtx } from "@/components/panel-context";
@@ -13,10 +13,10 @@ import { PanelCtx } from "@/components/panel-context";
 const NAV = [
   { href: "/panel", label: "Resumen", icon: LayoutDashboard },
   { href: "/panel/pedidos", label: "Pedidos", icon: ClipboardList },
+  { href: "/panel/clientes", label: "Clientes", icon: Users },
   { href: "/panel/productos", label: "Productos", icon: Package },
   { href: "/panel/repartidores", label: "Equipo", icon: Bike },
   { href: "/panel/negocio", label: "Negocio", icon: Settings },
-  { href: "/panel/suscripcion", label: "Plan", icon: CreditCard },
 ];
 
 export default function PanelLayout({ children }: { children: ReactNode }) {
@@ -41,6 +41,9 @@ export default function PanelLayout({ children }: { children: ReactNode }) {
               );
             })}
           </nav>
+          <Link href="/panel/suscripcion" className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold ${pathname.startsWith("/panel/suscripcion") ? "bg-agua-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+            <CreditCard className="h-5 w-5" /> Mi plan y pagos
+          </Link>
           <Link href="/cuenta" className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">
             <UserRound className="h-5 w-5" /> {profile.full_name.split(" ")[0] || "Mi cuenta"}
           </Link>

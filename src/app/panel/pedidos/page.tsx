@@ -118,7 +118,7 @@ function OrderDetail({ order, onChanged }: { order: Order; onChanged: () => void
             <button onClick={() => run("yo", "assign_order", { p_order_id: order.id })} disabled={busy !== null} className={order.driver_id === profile.id ? "btn-primary" : "btn-outline"}>
               <Hand className="h-5 w-5" /> Yo lo llevo {order.driver_id === profile.id && "✓"}
             </button>
-            {drivers.filter((d) => d.active).map((d) => (
+            {drivers.filter((d) => d.active && d.accepted && d.profiles.has_pin).map((d) => (
               <button key={d.user_id} onClick={() => run(d.user_id, "assign_order", { p_order_id: order.id, p_driver_id: d.user_id })} disabled={busy !== null} className={order.driver_id === d.user_id ? "btn-primary" : "btn-outline"}>
                 <Bike className="h-5 w-5" /> {d.profiles.full_name} {order.driver_id === d.user_id && "✓"}
               </button>

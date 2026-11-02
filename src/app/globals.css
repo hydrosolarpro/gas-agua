@@ -98,8 +98,19 @@ body {
   from { transform: translateY(32px); opacity: 0; }
 }
 
+.dest-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dest-ping 1.8s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+}
+
+@keyframes dest-ping {
+  from { transform: scale(0.6); opacity: 0.55; }
+  to { transform: scale(2.6); opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .sheet-backdrop, .sheet-panel, .marker-pulse {
+  .sheet-backdrop, .sheet-panel, .marker-pulse, .dest-ring {
     animation: none;
   }
 }
