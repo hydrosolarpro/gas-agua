@@ -10,7 +10,7 @@ import Map from "@/components/map/Map";
 import { OrderItems, OrderRow, OrderTimeline } from "@/components/orders";
 import { Empty, ErrorText, FullLoader, MethodBadge, PayBadge, Sheet, Spinner, StatusBadge } from "@/components/ui";
 import { useBusinessOrders, useDrivers } from "@/components/useBusinessOrders";
-import { EtaCard } from "@/components/Eta";
+import { EtaCard, MapEta, etaLabel } from "@/components/Eta";
 import { Traza } from "@/components/Traza";
 import { ACTIVE_STATUSES, dateTime, errorMessage, money, telLink, waLink } from "@/lib/format";
 import { useDriverLocation } from "@/lib/hooks";
@@ -116,16 +116,19 @@ function OrderDetail({ order, onChanged }: { order: Order; onChanged: () => void
 
       <OrderTimeline order={order} />
 
+      <div className="relative">
       <Map
         center={{ lat: order.lat, lng: order.lng }}
         zoom={16}
         className="h-52 rounded-2xl"
         markers={[
-          { id: "d", kind: "destino", position: { lat: order.lat, lng: order.lng }, label: order.address_text },
+          { id: "d", kind: "destino", position: { lat: order.lat, lng: order.lng }, label: etaLabel(order) ? `${order.address_text} · ${etaLabel(order)}` : order.address_text, permanent: Boolean(etaLabel(order)) },
           ...(driverLoc ? [{ id: "r", kind: "repartidor" as const, position: { lat: driverLoc.lat, lng: driverLoc.lng }, label: driverName ?? "Repartidor" }] : []),
         ]}
         fitKey={driverLoc ? "con" : "sin"}
       />
+      <MapEta order={order} />
+      </div>
 
       <div className="rounded-2xl bg-slate-50 p-4">
         <p className="font-bold">{order.customer_name || "Cliente"}</p>

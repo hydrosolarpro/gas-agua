@@ -10,6 +10,8 @@ export type MapMarker = {
   position: LatLng;
   kind: "destino" | "repartidor" | "negocio" | "pedido";
   label?: string;
+  /** Etiqueta siempre visible (no solo al pasar el dedo o el mouse). */
+  permanent?: boolean;
   heading?: number | null;
   draggable?: boolean;
   onDragEnd?: (p: LatLng) => void;
@@ -137,7 +139,11 @@ export default function MapCanvas({
             click: () => m.onClick?.(),
           }}
         >
-          {m.label && m.kind !== "pedido" && <Tooltip direction="top" offset={[0, -24]}>{m.label}</Tooltip>}
+          {m.label && m.kind !== "pedido" && (
+            <Tooltip direction="top" offset={[0, -24]} permanent={m.permanent} className={m.permanent ? "eta-tip" : undefined}>
+              {m.label}
+            </Tooltip>
+          )}
         </Marker>
       ))}
       <FitBounds points={points} fitKey={fitKey} />

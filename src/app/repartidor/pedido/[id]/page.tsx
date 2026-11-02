@@ -10,13 +10,25 @@ import { OrderItems } from "@/components/orders";
 import { Empty, ErrorText, FullLoader, MethodBadge, Sheet, Spinner, StatusBadge, TopBar } from "@/components/ui";
 import { errorMessage, METHOD, money, telLink, waLink } from "@/lib/format";
 import { distanceM, formatDistance, formatEta, googleMapsLink, wazeLink } from "@/lib/geo";
-import { EtaCard } from "@/components/Eta";
+import { EtaCard, MapEta, etaLabel } from "@/components/Eta";
 import { hasArrived } from "@/lib/arrival";
 import { useOrder, useRoute, useSession, useShareLocation } from "@/lib/hooks";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { PaymentMethod } from "@/lib/types";
 
 type Tab = "entrega" | "pedido";
+
+type Estimate = { secs: number; source: "ruta" | "local" | "referencial" };
+const RANK = { referencial: 1, local: 2, ruta: 3 } as const;
+
+/** Estimación hasta el punto de entrega: por la ruta real; si no hay GPS, desde el local; si tampoco, un valor referencial. */
+function estimateEta(route: { durationS: number } | null, business: { lat: number | null; lng: number | null } | null, destination: { lat: number; lng: number } | null): Estimate {
+  if (route) return { secs: route.durationS, source: "ruta" };
+  if (business?.lat != null && business?.lng != null && destination) {
+    return { secs: Math.max(120, (distanceM({ lat: business.lat, lng: business.lng }, destination) * 1.4) / 6), source: "local" };
+  }
+  return { secs: 15 * 60, source: "referencial" };
+}
 
 export default function EntregaPage() {
   const { id } = useParams<{ id: string }>();
@@ -56,19 +68,23 @@ export default function EntregaPage() {
     supabaseBrowser().rpc("mark_arrived", { p_order_id: order.id }).then(() => reload());
   }, [order, mine, position, destination, reload]);
 
-  // Estimación al salir: por la ruta desde donde está el repartidor; sin GPS, por la distancia desde el local.
-  const estimateSeconds = (): number | null => {
-    if (route) return route.durationS;
-    if (business?.lat != null && business?.lng != null && destination) {
-      return (distanceM({ lat: business.lat, lng: business.lng }, destination) * 1.4) / 6;
-    }
-    return null;
-  };
+  // Desde que toma el pedido se guarda la estimación hasta el punto de entrega; se mejora cuando llega la ruta real.
+  const estimate = estimateEta(route, business, destination);
+  const sentRank = useRef(0);
+  useEffect(() => {
+    if (!order || !mine || order.status !== "aceptado") return;
+    const dbRank = order.eta_source ? RANK[order.eta_source] : 0;
+    const rank = RANK[estimate.source];
+    if (rank <= Math.max(sentRank.current, dbRank)) return;
+    sentRank.current = rank;
+    supabaseBrowser()
+      .rpc("set_eta", { p_order_id: order.id, p_eta_seconds: Math.round(estimate.secs), p_source: estimate.source })
+      .then(() => reload());
+  }, [order, mine, estimate.secs, estimate.source, reload]);
 
   async function startDelivery() {
     if (!order) return;
-    const secs = estimateSeconds();
-    await rpc("start_delivery", { p_order_id: order.id, p_eta_seconds: secs ? Math.round(secs) : null });
+    await rpc("start_delivery", { p_order_id: order.id, p_eta_seconds: Math.round(estimate.secs), p_source: estimate.source });
   }
 
   async function confirmDelivery() {
@@ -92,7 +108,8 @@ export default function EntregaPage() {
 
   const total = Number(order.total);
   const change = method === "efectivo" && received ? Number(received) - total : null;
-  const markers: MapMarker[] = [{ id: "destino", kind: "destino", position: destination!, label: order.address_text }];
+  const etaText = etaLabel(order);
+  const markers: MapMarker[] = [{ id: "destino", kind: "destino", position: destination!, label: etaText ? `${order.address_text} · ${etaText}` : order.address_text, permanent: Boolean(etaText) }];
   if (position) markers.push({ id: "yo", kind: "repartidor", position, label: "Tú" });
   const payNumber = method === "yape" ? business?.yape_number : method === "plin" ? business?.plin_number : null;
 
@@ -109,6 +126,7 @@ export default function EntregaPage() {
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div className="relative h-[28dvh] shrink-0 lg:h-auto lg:flex-1">
           <Map center={position ?? destination!} zoom={16} className="h-full" markers={markers} route={sharing ? route?.points : undefined} fitKey={`${order.status}-${position ? 1 : 0}`} />
+          <MapEta order={order} />
         </div>
 
         <aside className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-3 lg:w-[26rem] lg:flex-none lg:border-l lg:border-slate-200">
@@ -205,7 +223,7 @@ export default function EntregaPage() {
         )}
         {order.status === "aceptado" && mine && (
           <button onClick={startDelivery} disabled={busy} className="cta-primary">
-            {busy ? <Spinner className="h-5 w-5" /> : <Bike className="h-5 w-5" />} Salir a entregar{estimateSeconds() ? ` · ≈ ${formatEta(estimateSeconds()!)}` : ""}
+            {busy ? <Spinner className="h-5 w-5" /> : <Bike className="h-5 w-5" />} Salir a entregar · ≈ {formatEta(estimate.secs)}
           </button>
         )}
         {order.status === "en_camino" && mine && order.payment_status !== "reportado" && (

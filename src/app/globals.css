@@ -123,6 +123,20 @@ body {
   from { transform: translateY(32px); opacity: 0; }
 }
 
+.leaflet-tooltip.eta-tip {
+  background: #4338ca;
+  color: #fff;
+  border: 2px solid #fff;
+  border-radius: 14px;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 8px 20px -6px rgba(67, 56, 202, 0.55);
+}
+.leaflet-tooltip-top.eta-tip::before {
+  border-top-color: #4338ca;
+}
+
 .toast-in {
   animation: toast-in 380ms cubic-bezier(0.23, 1, 0.32, 1);
 }

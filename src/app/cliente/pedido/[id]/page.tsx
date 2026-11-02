@@ -9,7 +9,7 @@ import Map, { type MapMarker } from "@/components/map/Map";
 import { OrderItems, OrderTimeline } from "@/components/orders";
 import { OrderProofsClient } from "@/components/OrderProofs";
 import { CopyField } from "@/components/CopyField";
-import { EtaCard, etaClock } from "@/components/Eta";
+import { EtaCard, MapEta, etaClock, etaLabel } from "@/components/Eta";
 import { Empty, ErrorText, FullLoader, MethodBadge, PayBadge, TopBar } from "@/components/ui";
 import { hasArrived } from "@/lib/arrival";
 import { errorMessage, money, telLink, waLink } from "@/lib/format";
@@ -66,7 +66,8 @@ export default function SeguimientoPage() {
   if (loading || order === undefined) return <FullLoader />;
   if (!order) return <div className="p-4"><Empty icon={<Search className="h-12 w-12 text-slate-300" />} title="Pedido no encontrado" /></div>;
 
-  const markers: MapMarker[] = [{ id: "destino", kind: "destino", position: { lat: order.lat, lng: order.lng }, label: "Tu dirección" }];
+  const etaText = etaLabel(order);
+  const markers: MapMarker[] = [{ id: "destino", kind: "destino", position: { lat: order.lat, lng: order.lng }, label: etaText ? `Tu dirección · ${etaText}` : "Tu dirección", permanent: Boolean(etaText) }];
   if (tracking && driverPoint) markers.push({ id: "repartidor", kind: "repartidor", position: driverPoint, label: driver?.full_name ?? "Repartidor" });
 
   const payNumber =
@@ -75,7 +76,7 @@ export default function SeguimientoPage() {
   const etaTime = order.status === "en_camino" && order.eta_at ? etaClock(order.eta_at) : null;
   const base = {
     pendiente: { title: "Buscando repartidor…", text: `${business?.name ?? "El negocio"} está revisando tu pedido.` },
-    aceptado: { title: "¡Pedido aceptado!", text: `${driver?.full_name ?? "Tu repartidor"} está preparando tu pedido.` },
+    aceptado: { title: "¡Pedido aceptado!", text: `${driver?.full_name ?? "Tu repartidor"} está preparando tu pedido.${order.eta_minutes ? ` Tardará ≈ ${order.eta_minutes} min en llegar una vez que salga.` : ""}` },
     en_camino: { title: etaTime ? `Llega a las ${etaTime}` : route ? `Llega en ${formatEta(route.durationS)}` : "¡Va en camino!", text: route ? `A ${formatDistance(route.distanceM)} de tu puerta` : `${driver?.full_name ?? "Tu repartidor"} ya salió hacia tu dirección.` },
     entregado: { title: "¡Entregado!", text: "Gracias por tu pedido." },
     cancelado: { title: "Pedido cancelado", text: order.cancel_reason ?? "" },
@@ -111,6 +112,7 @@ export default function SeguimientoPage() {
             route={tracking ? route?.points : undefined}
             fitKey={`${order.status}-${driverPoint ? "con" : "sin"}`}
           />
+          <MapEta order={order} />
         </div>
 
         <aside className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-3 lg:w-[26rem] lg:flex-none lg:border-l lg:border-slate-200">
