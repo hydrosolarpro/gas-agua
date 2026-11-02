@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { CircleCheck, CircleX, Wallet } from "@/components/icons";
-import { monthLabel, useAdmin } from "@/components/admin-context";
+import { useAdmin } from "@/components/admin-context";
+import { fmtDateTime, fmtDay } from "@/lib/plan";
 import { ProofView } from "@/components/proof";
 import { Empty, ErrorText, FullLoader, Spinner } from "@/components/ui";
-import { dateTime, errorMessage, money } from "@/lib/format";
+import { errorMessage, money } from "@/lib/format";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { SubscriptionPayment } from "@/lib/types";
 
@@ -78,13 +79,18 @@ export default function AdminPagos() {
                 <p className="font-bold">{nameOf(p.business_id)}</p>
                 <span className={`chip ${STATUS_TONE[p.status]}`}>{p.status === "pendiente" ? "Por validar" : p.status === "validado" ? "Validado" : "Rechazado"}</span>
               </div>
-              <p className="text-sm capitalize text-slate-500">
-                {monthLabel(p.period)} · {p.method}
+              <p className="text-sm text-slate-500">
+                Pagó el {fmtDateTime(p.paid_at)} · {p.method}
                 {p.operation_code ? ` · Op. ${p.operation_code}` : ""}
               </p>
-              <p className="text-xs text-slate-400">{dateTime(p.reported_at)}</p>
+              {p.status === "validado" && p.valid_from && p.valid_to && (
+                <p className="text-sm font-semibold text-emerald-700">
+                  Vigente del {fmtDay(p.valid_from)} al {fmtDay(p.valid_to)}
+                </p>
+              )}
+              {!p.proof_path && p.status === "pendiente" && <p className="text-xs font-semibold text-orange-700">Sin comprobante adjunto</p>}
             </div>
-            <ProofView path={p.proof_path} caption={`${nameOf(p.business_id)} · ${money(p.amount)}`} />
+            <ProofView large path={p.proof_path} caption={`${nameOf(p.business_id)} · ${money(p.amount)}`} />
             <p className="text-lg font-extrabold">{money(p.amount)}</p>
             {p.status === "pendiente" && (
               <div className="flex gap-2">

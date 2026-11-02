@@ -5,10 +5,12 @@ import { Store } from "@/components/icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { Bike, ClipboardList, CreditCard, LayoutDashboard, Package, Settings, UserRound, Users } from "lucide-react";
+import { BarChart3, Bike, ClipboardList, CreditCard, LayoutDashboard, Package, Settings, UserRound, Users } from "lucide-react";
 import { FullLoader, Logo } from "@/components/ui";
 import { useSession } from "@/lib/hooks";
 import { PanelCtx } from "@/components/panel-context";
+import { PlanGate } from "@/components/PlanGate";
+import { SupportCard } from "@/components/SupportCard";
 
 const NAV = [
   { href: "/panel", label: "Resumen", icon: LayoutDashboard },
@@ -17,6 +19,7 @@ const NAV = [
   { href: "/panel/productos", label: "Productos", icon: Package },
   { href: "/panel/repartidores", label: "Equipo", icon: Bike },
   { href: "/panel/negocio", label: "Negocio", icon: Settings },
+  { href: "/panel/estadisticas", label: "Estadísticas", icon: BarChart3 },
 ];
 
 export default function PanelLayout({ children }: { children: ReactNode }) {
@@ -41,6 +44,7 @@ export default function PanelLayout({ children }: { children: ReactNode }) {
               );
             })}
           </nav>
+          <SupportCard compact />
           <Link href="/panel/suscripcion" className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold ${pathname.startsWith("/panel/suscripcion") ? "bg-agua-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
             <CreditCard className="h-5 w-5" /> Mi plan y pagos
           </Link>
@@ -56,15 +60,15 @@ export default function PanelLayout({ children }: { children: ReactNode }) {
               <UserRound className="h-5 w-5" />
             </Link>
           </header>
-          {children}
+          <PlanGate business={business}>{children}</PlanGate>
         </div>
 
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-7 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
           {NAV.map(({ href, label, icon: Icon }) => {
             const active = href === "/panel" ? pathname === href : pathname.startsWith(href);
             return (
-              <Link key={href} href={href} className={`flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold ${active ? "text-agua-700" : "text-slate-500"}`}>
-                <Icon className="h-5 w-5" /> {label}
+              <Link key={href} href={href} className={`flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold ${active ? "text-agua-700" : "text-slate-500"}`}>
+                <Icon className="h-5 w-5" /> {label === "Estadísticas" ? "Estadíst." : label}
               </Link>
             );
           })}

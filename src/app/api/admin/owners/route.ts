@@ -35,8 +35,23 @@ export async function DELETE(request: Request) {
     }
   }
 
+  // Comprobantes de pago guardados (mensualidad y pedidos): se borran para no dejar archivos huérfanos.
+  try {
+    const bucket = db.storage.from("comprobantes");
+    const { data: orders } = await db.from("orders").select("id").eq("business_id", business.id);
+    for (const folder of [`subs/${business.id}`, ...(orders ?? []).map((o) => `orders/${o.id}`)]) {
+      const { data: files } = await bucket.list(folder, { limit: 100 });
+      if (files?.length) await bucket.remove(files.map((f) => `${folder}/${f.name}`));
+    }
+  } catch {
+    // Si el almacenamiento falla no impedimos eliminar la cuenta.
+  }
+
   // Al borrar al dueño se eliminan en cascada su perfil, negocio, productos, pedidos y pagos.
   const { error } = await db.auth.admin.deleteUser(business.owner_id);
-  if (error) return NextResponse.json({ error: "No se pudo eliminar la cuenta" }, { status: 500 });
+  if (error) {
+    console.error("deleteUser falló:", error.message);
+    return NextResponse.json({ error: `No se pudo eliminar la cuenta: ${error.message}` }, { status: 500 });
+  }
   return NextResponse.json({ ok: true, repartidoresEliminados: drivers });
 }

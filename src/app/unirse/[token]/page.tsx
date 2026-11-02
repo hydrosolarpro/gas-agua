@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { PhoneInput, PinInput } from "@/components/PinInput";
 import { ErrorText, FullLoader, Logo, Spinner } from "@/components/ui";
 import { rememberRole } from "@/lib/hooks";
+import { phoneExists } from "@/lib/phone-exists";
 
 type Check = { valid: boolean; business?: string; slug?: string; note?: string | null };
 type Step = "datos" | "pin" | "confirmar";
@@ -22,6 +23,7 @@ export default function Unirse() {
   const [pin2, setPin2] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [existing, setExisting] = useState(false);
 
   useEffect(() => {
     fetch(`/api/customers/check?token=${encodeURIComponent(token)}`)
@@ -30,14 +32,15 @@ export default function Unirse() {
       .catch(() => setCheck({ valid: false }));
   }, [token]);
 
-  function next() {
+  async function next() {
     if (!/^9\d{8}$/.test(phone)) return setError("El celular debe tener 9 dígitos y empezar con 9");
     setError("");
+    setExisting(await phoneExists(token, "cliente", phone));
     setStep("pin");
   }
 
-  async function submit(confirm: string) {
-    if (confirm !== pin) {
+  async function submit(confirm: string, pinValue = pin) {
+    if (confirm !== pinValue) {
       setError("Los PIN no coinciden. Vuelve a intentarlo.");
       setPin("");
       setPin2("");
@@ -49,7 +52,7 @@ export default function Unirse() {
     const res = await fetch("/api/customers/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, fullName, phone, pin }),
+      body: JSON.stringify({ token, fullName, phone, pin: pinValue }),
     });
     const data = await res.json();
     setBusy(false);
@@ -90,7 +93,7 @@ export default function Unirse() {
         <div className="card mt-8 w-full max-w-md p-6">
           <p className="text-sm font-semibold text-agua-700">Paso {step === "datos" ? 1 : step === "pin" ? 2 : 3} de 3</p>
           <h1 className="mt-1 text-2xl font-extrabold">
-            {step === "datos" ? `Pide con ${check.business}` : step === "pin" ? "Elige tu PIN" : "Repite tu PIN"}
+            {step === "datos" ? `Pide con ${check.business}` : step === "pin" ? (existing ? "Escribe tu PIN" : "Elige tu PIN") : "Repite tu PIN"}
           </h1>
           <p className="mt-1 text-slate-600">
             {step === "datos"
@@ -122,14 +125,19 @@ export default function Unirse() {
                   value={pin}
                   onChange={setPin}
                   label="Tu PIN de 4 dígitos"
-                  onComplete={() => {
+                  onComplete={(v) => {
                     setError("");
-                    setStep("confirmar");
+                    if (existing) submit(v, v);
+                    else setStep("confirmar");
                   }}
                 />
-                <p className="text-center text-xs text-slate-500">
-                  Si este celular ya tiene cuenta (por ejemplo, eres dueño de otro negocio), escribe tu PIN actual.
-                </p>
+                {existing ? (
+                  <p className="rounded-2xl bg-sky-50 p-3 text-center text-sm text-sky-900">
+                    Este celular <b>ya tiene cuenta</b>. Escribe el PIN que usas siempre y quedarás registrado también como cliente de este negocio.
+                  </p>
+                ) : (
+                  <p className="text-center text-xs text-slate-500">Elige un PIN de 4 dígitos que recuerdes.</p>
+                )}
               </>
             )}
             {step === "confirmar" && (

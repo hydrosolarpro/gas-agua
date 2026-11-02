@@ -17,7 +17,7 @@ async function api(method: string, body: Record<string, unknown>) {
 }
 
 export default function RepartidoresPage() {
-  const { business } = usePanel();
+  const { business, profile } = usePanel();
   const { drivers, reload } = useDrivers(business.id);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -56,6 +56,18 @@ export default function RepartidoresPage() {
     reload();
   }
 
+  async function addMyself() {
+    if (!profile.phone) return setError("Primero agrega tu celular en Mi cuenta");
+    setBusyId(profile.id);
+    setError("");
+    setNotice("");
+    const { ok, data } = await api("POST", { fullName: profile.full_name || "Dueño", phone: profile.phone });
+    setBusyId(null);
+    if (!ok) return setError(data.error ?? "No se pudo agregar");
+    setNotice("Listo: ahora también repartes tú. Entra como repartidor con tu mismo celular y PIN de dueño.");
+    reload();
+  }
+
   async function toggle(d: Driver) {
     await supabaseBrowser().from("business_members").update({ active: !d.active }).eq("business_id", business.id).eq("user_id", d.user_id);
     reload();
@@ -87,9 +99,22 @@ export default function RepartidoresPage() {
       {notice && <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{notice}</p>}
       <ErrorText>{error}</ErrorText>
 
+      {!drivers.some((d) => d.user_id === profile.id) && (
+        <section className="card space-y-3 p-4">
+          <p className="font-bold">¿Repartes tú también?</p>
+          <p className="text-sm text-slate-600">
+            Puedes repartir con tu mismo celular y PIN de dueño, o registrar otro celular distinto con el botón «+ Repartidor».
+          </p>
+          <button onClick={addMyself} disabled={busyId === profile.id} className="btn-outline w-full">
+            {busyId === profile.id ? <Spinner className="h-4 w-4" /> : <Bike className="h-5 w-5" />} Repartir yo mismo ({profile.phone ?? "sin celular"})
+          </button>
+        </section>
+      )}
+
       {drivers.length === 0 && <Empty icon={<Bike className="h-12 w-12 text-slate-300" />} title="Aún no tienes repartidores" text="También puedes repartir tú mismo desde la vista de pedidos." />}
       <div className="space-y-3">
         {drivers.map((d) => {
+          const yo = d.user_id === profile.id;
           const pendiente = !d.accepted;
           const sinPin = d.accepted && !d.profiles.has_pin;
           return (
@@ -99,7 +124,9 @@ export default function RepartidoresPage() {
                   <Bike className="h-6 w-6 text-agua-700" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-bold">{d.profiles.full_name}</p>
+                  <p className="truncate font-bold">
+                    {d.profiles.full_name} {yo && <span className="chip bg-agua-100 text-agua-700">Tú (dueño)</span>}
+                  </p>
                   <p className="text-sm text-slate-500">
                     <Phone className="mr-1 inline h-3.5 w-3.5 -mt-0.5" />
                     {d.profiles.phone}
@@ -122,7 +149,12 @@ export default function RepartidoresPage() {
                     <MessageCircle className="h-4 w-4" /> Enviar acceso por WhatsApp
                   </a>
                 )}
-                {d.accepted && (
+                {yo && (
+                  <p className="w-full text-xs text-slate-500">
+                    Entras como repartidor en «Soy repartidor» con tu mismo celular y PIN. Verás los pedidos que te asignes.
+                  </p>
+                )}
+                {d.accepted && !yo && (
                   <button
                     onClick={() => act(d, "PATCH", sinPin ? undefined : `¿Reiniciar el acceso de ${d.profiles.full_name}? Tendrá que crear un PIN nuevo.`)}
                     disabled={busyId === d.user_id}
@@ -133,11 +165,11 @@ export default function RepartidoresPage() {
                   </button>
                 )}
                 <button
-                  onClick={() => act(d, "DELETE", `¿Quitar a ${d.profiles.full_name} de tu equipo?`)}
+                  onClick={() => act(d, "DELETE", yo ? "¿Dejar de repartir? Seguirás siendo dueño." : `¿Quitar a ${d.profiles.full_name} de tu equipo? Ya no podrá repartir tus pedidos.`)}
                   disabled={busyId === d.user_id}
                   className="btn-outline ml-auto px-4 py-2 text-sm text-rose-600"
                 >
-                  <Trash2 className="h-4 w-4" /> {pendiente ? "Anular" : "Quitar"}
+                  <Trash2 className="h-4 w-4" /> {pendiente ? "Anular" : yo ? "Dejar de repartir" : "Quitar repartidor"}
                 </button>
               </div>
             </article>

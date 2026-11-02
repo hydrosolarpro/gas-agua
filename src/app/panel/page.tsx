@@ -3,15 +3,14 @@
 import { Coffee, MethodMark } from "@/components/icons";
 
 import Link from "next/link";
+import { SupportCard } from "@/components/SupportCard";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Copy } from "lucide-react";
 import Map, { LIMA, type MapMarker } from "@/components/map/Map";
 import { OrderRow } from "@/components/orders";
 import { Empty, FullLoader } from "@/components/ui";
-import { monthLabel } from "@/components/admin-context";
 import { useBusinessOrders, useDrivers } from "@/components/useBusinessOrders";
-import { useSubscription } from "@/components/useSubscription";
 import { ACTIVE_STATUSES, METHOD, money } from "@/lib/format";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { DriverLocation, PaymentMethod } from "@/lib/types";
@@ -29,7 +28,6 @@ function Kpi({ label, value, tone, sub, className = "" }: { label: string; value
 
 function Resumen() {
   const { business } = usePanel();
-  const sub = useSubscription(business);
   const params = useSearchParams();
   const { orders } = useBusinessOrders(business.id, 7);
   const { drivers } = useDrivers(business.id);
@@ -126,16 +124,6 @@ function Resumen() {
         </section>
       )}
 
-      {sub.status === "pendiente" && (
-        <Link href="/panel/suscripcion" className="flex items-center justify-between gap-3 rounded-3xl border-2 border-rose-200 bg-rose-50 p-4">
-          <span>
-            <span className="block font-bold text-rose-900">Tu pago de {monthLabel(sub.period)} está pendiente</span>
-            <span className="text-sm text-rose-800">Plan de {money(sub.fee)} al mes. Mira dónde pagar y avisa tu pago.</span>
-          </span>
-          <span className="shrink-0 text-sm font-bold text-rose-900">Pagar →</span>
-        </Link>
-      )}
-
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Kpi label="Pedidos hoy" value={String(stats.total)} tone="text-ink" />
         <Kpi label="En curso" value={String(stats.active)} tone="text-indigo-600" />
@@ -192,6 +180,8 @@ function Resumen() {
           ))}
         </div>
       </section>
+
+      <SupportCard />
     </main>
   );
 }

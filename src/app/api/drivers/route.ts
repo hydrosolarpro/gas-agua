@@ -106,11 +106,14 @@ export async function DELETE(request: Request) {
   if (!member) return NextResponse.json({ error: "Ese repartidor no está en tu equipo" }, { status: 404 });
   await db.from("business_members").delete().eq("business_id", guard.businessId).eq("user_id", userId);
 
-  // Si era una cuenta creada solo para este negocio y nunca llegó a activarse, se borra.
-  const { data: p } = await db.from("profiles").select("role, has_pin, is_admin").eq("id", userId).maybeSingle();
+  // Si ya no trabaja en ningún negocio: la cuenta creada solo para repartir se borra; si además tenía pedidos como
+  // cliente, se conserva y vuelve a ser cliente.
+  const { data: p } = await db.from("profiles").select("role, is_admin").eq("id", userId).maybeSingle();
   const { count } = await db.from("business_members").select("user_id", { count: "exact", head: true }).eq("user_id", userId);
-  if (p && p.role === "repartidor" && !p.has_pin && !p.is_admin && (count ?? 0) === 0) {
-    await db.auth.admin.deleteUser(userId);
+  if (p && p.role === "repartidor" && !p.is_admin && (count ?? 0) === 0) {
+    const { count: orders } = await db.from("orders").select("id", { count: "exact", head: true }).eq("customer_id", userId);
+    if ((orders ?? 0) === 0) await db.auth.admin.deleteUser(userId);
+    else await db.from("profiles").update({ role: "cliente" }).eq("id", userId);
   }
   return NextResponse.json({ ok: true });
 }

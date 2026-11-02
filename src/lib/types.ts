@@ -46,6 +46,9 @@ export type SubscriptionPayment = {
   proof_path: string | null;
   status: "pendiente" | "validado" | "rechazado";
   reported_at: string;
+  paid_at: string;
+  valid_from: string | null;
+  valid_to: string | null;
   validated_at: string | null;
 };
 
@@ -55,6 +58,7 @@ export type Business = {
   name: string;
   slug: string;
   fee_override?: number | null;
+  created_at: string;
   phone: string | null;
   yape_number: string | null;
   plin_number: string | null;

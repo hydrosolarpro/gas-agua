@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { Copy, MessageCircle } from "lucide-react";
 import { ErrorText, Sheet, Spinner } from "@/components/ui";
-import { currentPeriod, monthLabel, useAdmin, type OwnerRow, feeFor } from "@/components/admin-context";
+import { ownerPlan, useAdmin, type OwnerRow, feeFor } from "@/components/admin-context";
+import { ProofPicker, uploadProof } from "@/components/proof";
+import { PLAN_DAYS, addDays, fmtDay, inputToIso, limaDate, nowForInput } from "@/lib/plan";
 import { errorMessage, money, waLink } from "@/lib/format";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -15,17 +17,12 @@ export const SUB_METHODS = [
   { id: "efectivo", label: "Efectivo" },
 ] as const;
 
-/** Últimos 3 meses y el siguiente, para elegir qué mes se está pagando. */
-export function periodOptions() {
-  const now = new Date();
-  return [-2, -1, 0, 1].map((d) => currentPeriod(new Date(now.getFullYear(), now.getMonth() + d, 1)));
-}
-
 /** El administrador registra un pago recibido (queda validado al instante). */
 export function RegisterPaymentSheet({ owner, onClose }: { owner: OwnerRow | null; onClose: () => void }) {
-  const { settings, reload } = useAdmin();
+  const { settings, payments, reload } = useAdmin();
   const [amount, setAmount] = useState("");
-  const [period, setPeriod] = useState(currentPeriod());
+  const [paidAt, setPaidAt] = useState(nowForInput());
+  const [file, setFile] = useState<File | null>(null);
   const [method, setMethod] = useState<string>("yape");
   const [code, setCode] = useState("");
   const [saving, setSaving] = useState(false);
@@ -37,20 +34,35 @@ export function RegisterPaymentSheet({ owner, onClose }: { owner: OwnerRow | nul
     setAmount(String(feeFor(owner, settings)));
     setCode("");
     setError("");
+    setPaidAt(nowForInput());
+    setFile(null);
   }
+
+  const plan = owner ? ownerPlan(owner, payments) : null;
+  const paidDay = paidAt ? paidAt.slice(0, 10) : limaDate();
+  const from = plan ? (paidDay > addDays(plan.until, 1) ? paidDay : addDays(plan.until, 1)) : paidDay;
 
   async function save() {
     if (!owner) return;
     const value = Number(amount);
     if (!(value > 0)) return setError("Escribe un monto mayor a cero");
+    if (!paidAt) return setError("Indica la fecha y hora del pago");
     setSaving(true);
     setError("");
+    let proof: string | null = null;
+    try {
+      if (file) proof = await uploadProof("subs", owner.id, file);
+    } catch (err) {
+      setSaving(false);
+      return setError((err as Error).message);
+    }
     const { error: e } = await supabaseBrowser().rpc("admin_register_payment", {
       p_business_id: owner.id,
       p_amount: value,
-      p_period: period,
+      p_paid_at: inputToIso(paidAt),
       p_method: method,
       p_code: code || null,
+      p_proof: proof,
     });
     setSaving(false);
     if (e) return setError(errorMessage(e));
@@ -66,14 +78,13 @@ export function RegisterPaymentSheet({ owner, onClose }: { owner: OwnerRow | nul
             <b>{owner.name}</b> · {owner.owner?.full_name}
           </p>
           <div>
-            <label className="label">Mes que paga</label>
-            <select className="input" value={period} onChange={(e) => setPeriod(e.target.value)}>
-              {periodOptions().map((p) => (
-                <option key={p} value={p}>
-                  {monthLabel(p)}
-                </option>
-              ))}
-            </select>
+            <label className="label">Fecha y hora del pago</label>
+            <input className="input" type="datetime-local" value={paidAt} max={nowForInput()} onChange={(e) => setPaidAt(e.target.value)} />
+            {paidAt && (
+              <p className="mt-1.5 rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900">
+                Vigente del <b>{fmtDay(from)}</b> al <b>{fmtDay(addDays(from, PLAN_DAYS - 1))}</b> ({PLAN_DAYS} días, inicio y fin incluidos).
+              </p>
+            )}
           </div>
           <div>
             <label className="label">Monto (S/)</label>
@@ -97,6 +108,7 @@ export function RegisterPaymentSheet({ owner, onClose }: { owner: OwnerRow | nul
             <label className="label">Código de operación (opcional)</label>
             <input className="input" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej. 4821937" />
           </div>
+          <ProofPicker file={file} onChange={setFile} label="Captura o foto del pago (opcional)" />
           <ErrorText>{error}</ErrorText>
           <button onClick={save} disabled={saving} className="btn-success w-full">
             {saving && <Spinner className="h-5 w-5" />} Guardar pago validado

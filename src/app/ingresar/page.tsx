@@ -165,7 +165,8 @@ function IngresarForm() {
       }
       rememberRole(rol);
     }
-    router.replace(next);
+    // El dueño siempre empieza en su Resumen, salvo que viniera de otra página de su panel.
+    router.replace(rol === "dueno" && !next.startsWith("/panel") ? "/panel" : next);
     router.refresh();
   }
 

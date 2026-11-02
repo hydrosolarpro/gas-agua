@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { daysLabel, limaDate, planFor, type PlanState } from "@/lib/plan";
 import type { Business, PlatformSettings, SubscriptionPayment } from "@/lib/types";
 
 export type OwnerRow = Business & {
@@ -9,7 +10,6 @@ export type OwnerRow = Business & {
   orders_total: number;
   orders_delivered: number;
   sales_validated: number;
-  created_at: string;
 };
 
 export type Invitation = { id: string; note: string | null; expires_at: string; used_at: string | null; revoked: boolean; created_at: string };
@@ -31,36 +31,26 @@ export function useAdmin() {
   return v;
 }
 
-/** Primer día del mes actual, formato de la base de datos (YYYY-MM-01). */
-export function currentPeriod(d = new Date()) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-}
-
-export function monthLabel(period: string) {
-  const [y, m] = period.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("es-PE", { month: "long", year: "numeric" });
-}
-
 /** Monto mensual que paga un dueño: el propio si el administrador lo fijó, si no el general. */
 export function feeFor(owner: Pick<OwnerRow, "fee_override">, settings: PlatformSettings | null) {
   return Number(owner.fee_override ?? settings?.monthly_fee ?? 0);
 }
 
-export type OwnerStatus = "al_dia" | "por_validar" | "pendiente";
-
-/** Situación del dueño en el mes actual según sus pagos. */
-export function ownerStatus(businessId: string, payments: SubscriptionPayment[], period = currentPeriod()): OwnerStatus {
-  const mine = payments.filter((p) => p.business_id === businessId && p.period === period);
-  if (mine.some((p) => p.status === "validado")) return "al_dia";
-  if (mine.some((p) => p.status === "pendiente")) return "por_validar";
-  return "pendiente";
+/** Demo, plan pagado o vencido de un negocio, según sus pagos validados. */
+export function ownerPlan(owner: Pick<Business, "id" | "created_at">, payments: SubscriptionPayment[]): PlanState {
+  return planFor(owner.created_at, payments.filter((p) => p.business_id === owner.id));
 }
 
-export const STATUS_LABEL: Record<OwnerStatus, { label: string; tone: string }> = {
-  al_dia: { label: "Al día", tone: "bg-emerald-100 text-emerald-800" },
-  por_validar: { label: "Por validar", tone: "bg-orange-100 text-orange-800" },
-  pendiente: { label: "Sin pagar", tone: "bg-rose-100 text-rose-800" },
-};
+/** Etiqueta y color para mostrar la situación del dueño. */
+export function planChip(plan: PlanState): { label: string; tone: string } {
+  if (plan.phase === "vencido") return { label: "Vencido", tone: "bg-rose-100 text-rose-800" };
+  const base = plan.phase === "demo" ? "Demo" : "Plan pagado";
+  const tone = plan.level === "ok" ? (plan.phase === "demo" ? "bg-sky-100 text-sky-800" : "bg-emerald-100 text-emerald-800") : "bg-orange-100 text-orange-800";
+  return { label: `${base} · ${daysLabel(plan.daysLeft)}`, tone };
+}
+
+/** ¿El pago se hizo en el mes actual (hora de Perú)? */
+export const paidThisMonth = (p: SubscriptionPayment) => limaDate(p.paid_at).slice(0, 7) === limaDate().slice(0, 7);
 
 export function useAdminData(): Omit<AdminData, "openInvite"> {
   const [owners, setOwners] = useState<OwnerRow[] | null>(null);

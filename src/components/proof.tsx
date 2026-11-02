@@ -75,7 +75,7 @@ export function ProofPicker({ file, onChange, label = "Comprobante de pago" }: {
 }
 
 /** Miniatura del comprobante (enlace firmado temporal); al tocarla se ve en grande. */
-export function ProofView({ path, caption }: { path: string | null | undefined; caption?: string }) {
+export function ProofView({ path, caption, large = false }: { path: string | null | undefined; caption?: string; large?: boolean }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [big, setBig] = useState(false);
@@ -98,13 +98,13 @@ export function ProofView({ path, caption }: { path: string | null | undefined; 
 
   if (!path) return null;
   if (failed) return <span className="text-xs text-slate-400">Comprobante no disponible</span>;
-  if (!url) return <span className="inline-block h-16 w-16 animate-pulse rounded-xl bg-slate-100" aria-label="Cargando comprobante" />;
+  if (!url) return <span className={`inline-block animate-pulse rounded-xl bg-slate-100 ${large ? "h-28 w-28" : "h-16 w-16"}`} aria-label="Cargando comprobante" />;
 
   return (
     <>
       <button type="button" onClick={() => setBig(true)} className="group relative inline-block overflow-hidden rounded-xl border border-slate-200" aria-label={caption ? `Ver comprobante: ${caption}` : "Ver comprobante"}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt="Comprobante de pago" className="h-16 w-16 object-cover transition group-active:scale-95" />
+        <img src={url} alt="Comprobante de pago" className={`object-cover transition group-active:scale-95 ${large ? "h-28 w-28" : "h-16 w-16"}`} />
         <span className="absolute bottom-0.5 right-0.5 rounded-full bg-slate-900/70 p-1 text-white">
           <ImageIcon className="h-3 w-3" />
         </span>

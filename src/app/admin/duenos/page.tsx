@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { MessageCircle, Search as SearchIcon, Trash2, UserPlus } from "lucide-react";
 import { Store, Phone } from "@/components/icons";
-import { STATUS_LABEL, feeFor, ownerStatus, useAdmin, type OwnerRow } from "@/components/admin-context";
+import { feeFor, ownerPlan, planChip, useAdmin, type OwnerRow } from "@/components/admin-context";
+import { fmtDay } from "@/lib/plan";
 import { DeleteOwnerSheet, FeeSheet, RegisterPaymentSheet } from "@/components/admin-sheets";
 import { Empty, ErrorText, FullLoader } from "@/components/ui";
 import { dateTime, errorMessage, money, waLink } from "@/lib/format";
@@ -58,7 +59,8 @@ export default function AdminDuenos() {
 
       <div className="space-y-3">
         {list.map((o) => {
-          const st = STATUS_LABEL[ownerStatus(o.id, payments)];
+          const plan = ownerPlan(o, payments);
+          const st = planChip(plan);
           return (
             <article key={o.id} className="card space-y-3 p-4">
               <div className="flex items-start gap-3">
@@ -71,7 +73,11 @@ export default function AdminDuenos() {
                     {o.owner?.full_name} · <Phone className="mr-0.5 inline h-3.5 w-3.5 -mt-0.5" />
                     {o.owner?.phone}
                   </p>
-                  <p className="text-xs text-slate-500">Desde {dateTime(o.created_at)}</p>
+                  <p className="text-xs text-slate-500">
+                    {plan.phase === "demo" ? "Demo" : plan.phase === "pagado" ? "Plan pagado" : "Venció"} · {fmtDay(plan.phase === "vencido" ? plan.until : plan.from)} al {fmtDay(plan.phase === "pagado" ? plan.until : plan.phase === "vencido" ? plan.until : plan.to)}
+                    {plan.pending && <span className="ml-1 font-semibold text-orange-700">· pago por validar</span>}
+                  </p>
+                  <p className="text-xs text-slate-400">Registrado el {dateTime(o.created_at)}</p>
                 </div>
                 <span className={`chip shrink-0 ${st.tone}`}>{st.label}</span>
               </div>
