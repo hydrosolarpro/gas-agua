@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     p.pin_setup_until &&
     new Date(p.pin_setup_until) > new Date();
   if (!open || !p) {
-    await recordAttempt(key, false);
+    // Sin acceso pendiente no se registra intento: así quien se equivoca de pestaña no queda bloqueado.
     return NextResponse.json({ error: NOT_PENDING }, { status: 404 });
   }
 
