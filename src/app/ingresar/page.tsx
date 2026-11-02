@@ -25,13 +25,14 @@ const ROLES: Record<Rol, { title: string; text: string; Icon: typeof Store }> = 
 };
 
 // Primer ingreso (o PIN reiniciado) de un repartidor o cliente: su negocio ya lo registró; aquí elige su propio PIN.
-function FirstTime({ phone, setPhone, next }: { phone: string; setPhone: (v: string) => void; next: string }) {
+function FirstTime({ phone, setPhone, next, onGoLogin }: { phone: string; setPhone: (v: string) => void; next: string; onGoLogin: () => void }) {
   const router = useRouter();
   const [step, setStep] = useState<"celular" | "pin" | "confirmar">(phone.length === 9 ? "pin" : "celular");
   const [pin, setPin] = useState("");
   const [pin2, setPin2] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [noPending, setNoPending] = useState(false);
 
   async function submit(confirm: string) {
     if (confirm !== pin) {
@@ -52,6 +53,7 @@ function FirstTime({ phone, setPhone, next }: { phone: string; setPhone: (v: str
     setBusy(false);
     if (!res.ok) {
       setError(data.error ?? "No se pudo crear tu PIN");
+      setNoPending(res.status === 404);
       setPin("");
       setPin2("");
       setStep(res.status === 404 ? "celular" : "pin");
@@ -77,9 +79,14 @@ function FirstTime({ phone, setPhone, next }: { phone: string; setPhone: (v: str
             <p className="mt-1 text-xs text-slate-500">El mismo número con el que tu negocio te registró.</p>
           </div>
           <ErrorText>{error}</ErrorText>
+          {noPending && (
+            <button onClick={onGoLogin} className="btn-gas w-full">
+              Ya tengo cuenta con este número: ingresar con mi PIN
+            </button>
+          )}
           <button
-            onClick={() => (phone.length === 9 ? (setError(""), setStep("pin")) : setError("Escribe tu celular de 9 dígitos"))}
-            className="btn-primary w-full"
+            onClick={() => (phone.length === 9 ? (setError(""), setNoPending(false), setStep("pin")) : setError("Escribe tu celular de 9 dígitos"))}
+            className={noPending ? "btn-outline w-full" : "btn-primary w-full"}
           >
             Continuar
           </button>
@@ -261,7 +268,7 @@ function IngresarForm() {
           </div>
         )}
         {first ? (
-          <FirstTime phone={phone} setPhone={setPhone} next={next} />
+          <FirstTime phone={phone} setPhone={setPhone} next={next} onGoLogin={() => setFirst(false)} />
         ) : (
           <>
         <label className="label">Celular</label>
