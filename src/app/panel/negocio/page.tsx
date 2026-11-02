@@ -78,9 +78,6 @@ export default function NegocioPage() {
           <Link href="/panel/suscripcion" className="btn-outline !px-3 !py-2 text-sm">
             Mi plan
           </Link>
-          <button onClick={save} disabled={saving} className="btn-primary !px-4 !py-2 text-sm">
-            {saving && <Spinner className="h-4 w-4" />} Guardar
-          </button>
         </div>
       </div>
 
@@ -163,6 +160,10 @@ export default function NegocioPage() {
           </div>
         </section>
       </div>
+
+      <button onClick={save} disabled={saving} className="cta-primary shrink-0">
+        {saving && <Spinner className="h-5 w-5" />} Guardar cambios
+      </button>
     </main>
   );
 }

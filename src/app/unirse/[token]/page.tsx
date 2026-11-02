@@ -100,7 +100,7 @@ export default function Unirse() {
           <p className="text-slate-600">
             El celular <b>{phone}</b> quedó registrado como cliente de <b>{check.business}</b>. Entra con tu PIN de siempre para pedir.
           </p>
-          <Link href={`/ingresar?tel=${phone}`} className="btn-gas w-full">
+          <Link href={`/ingresar?tel=${phone}`} className="cta-gas">
             Ingresar con mi PIN
           </Link>
         </div>
@@ -146,7 +146,7 @@ export default function Unirse() {
                   <PhoneInput value={phone} onChange={setPhone} />
                 </div>
                 <ErrorText>{error}</ErrorText>
-                <button onClick={next} className="btn-gas w-full">
+                <button onClick={next} className="cta-gas">
                   Continuar
                 </button>
               </>

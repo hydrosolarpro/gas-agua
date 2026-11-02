@@ -172,12 +172,12 @@ export default function EntregaPage() {
           <div className="shrink-0 space-y-2">
             <ErrorText>{error}</ErrorText>
         {order.status === "pendiente" && (
-          <button onClick={() => rpc("assign_order", { p_order_id: order.id })} disabled={busy} className="btn-gas w-full">
+          <button onClick={() => rpc("assign_order", { p_order_id: order.id })} disabled={busy} className="cta-gas">
             <Hand className="h-5 w-5" /> Tomar este pedido
           </button>
         )}
         {order.status === "aceptado" && mine && (
-          <button onClick={() => rpc("start_delivery", { p_order_id: order.id })} disabled={busy} className="btn-primary w-full text-lg">
+          <button onClick={() => rpc("start_delivery", { p_order_id: order.id })} disabled={busy} className="cta-primary">
             {busy ? <Spinner className="h-5 w-5" /> : <Bike className="h-5 w-5" />} Salir a entregar
           </button>
         )}
@@ -189,7 +189,7 @@ export default function EntregaPage() {
               setOpCode("");
               setPayOpen(true);
             }}
-            className="btn-success w-full text-lg"
+            className="cta-success"
           >
             <CircleCheck className="h-6 w-6" /> Entregué y cobré
           </button>
@@ -246,7 +246,7 @@ export default function EntregaPage() {
           </div>
         )}
         <ErrorText>{error}</ErrorText>
-        <button onClick={confirmDelivery} disabled={busy} className="btn-success mt-5 w-full text-lg">
+        <button onClick={confirmDelivery} disabled={busy} className="cta-success mt-5">
           {busy && <Spinner className="h-5 w-5" />} Confirmar cobro
         </button>
       </Sheet>

@@ -98,7 +98,7 @@ export default function ActivarAdmin() {
                 <p className="mt-1 text-xs text-slate-500">Es el valor de ADMIN_SETUP_CODE de tu configuración.</p>
               </div>
               <ErrorText>{error}</ErrorText>
-              <button onClick={next} className="btn-primary w-full">
+              <button onClick={next} className="cta-primary">
                 Continuar
               </button>
             </>

@@ -4,7 +4,7 @@ import { Bike, MapPin, Search, Store } from "@/components/icons";
 
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { MessageCircle, Phone } from "lucide-react";
+import { CircleDollarSign, MessageCircle, Phone } from "lucide-react";
 import Map, { type MapMarker } from "@/components/map/Map";
 import { OrderItems, OrderTimeline } from "@/components/orders";
 import { OrderProofsClient } from "@/components/OrderProofs";
@@ -85,6 +85,7 @@ export default function SeguimientoPage() {
         ? { title: "No pudimos confirmar tu pago", text: "Vuelve a enviar tu comprobante o paga directamente al repartidor." }
         : base;
   // El pago se muestra cuando llega el repartidor y se mantiene mientras se valida.
+  const payNow = arrived && (order.payment_status === "pendiente" || order.payment_status === "rechazado") && order.status === "en_camino";
   const showPay = arrived || order.payment_status !== "pendiente" || order.status === "entregado";
 
   const TABS: { id: Tab; label: string; dot?: boolean }[] = [
@@ -224,6 +225,17 @@ export default function SeguimientoPage() {
         )}
             </div>
           </div>
+
+          {payNow && tab !== "pago" && (
+            <button onClick={() => setTab("pago")} className="cta-success shrink-0 animate-pulse">
+              <CircleDollarSign className="h-6 w-6" /> {order.payment_method === "efectivo" ? "Ver cuánto pagar" : "Pagar ahora"}
+            </button>
+          )}
+          {payNow && tab === "pago" && order.payment_method === "efectivo" && (
+            <p className="shrink-0 rounded-2xl bg-emerald-600 p-4 text-center text-lg font-extrabold text-white">
+              Entrega {money(order.total)} al repartidor
+            </p>
+          )}
         </aside>
       </div>
     </div>

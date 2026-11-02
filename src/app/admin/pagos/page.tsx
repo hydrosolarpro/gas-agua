@@ -94,10 +94,10 @@ export default function AdminPagos() {
             <p className="text-lg font-extrabold">{money(p.amount)}</p>
             {p.status === "pendiente" && (
               <div className="flex gap-2">
-                <button onClick={() => review(p.id, true)} disabled={busy !== null} className="btn-success px-4 py-2 text-sm">
+                <button onClick={() => review(p.id, true)} disabled={busy !== null} className="btn-success !px-5 !py-3 text-base">
                   {busy === p.id + true ? <Spinner className="h-4 w-4" /> : <CircleCheck className="h-4 w-4" />} Validar
                 </button>
-                <button onClick={() => review(p.id, false)} disabled={busy !== null} className="btn-outline px-4 py-2 text-sm text-rose-600">
+                <button onClick={() => review(p.id, false)} disabled={busy !== null} className="btn-outline !px-5 !py-3 text-base text-rose-600">
                   <CircleX className="h-4 w-4" /> Rechazar
                 </button>
               </div>

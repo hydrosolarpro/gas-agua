@@ -54,7 +54,7 @@ export function ArrivalWatcher() {
       if (sessionStorage.getItem(key)) return;
       sessionStorage.setItem(key, "1");
     } catch {}
-    navigator.vibrate?.([300, 150, 300, 150, 600]);
+    if (navigator.userActivation?.hasBeenActive) navigator.vibrate?.([300, 150, 300, 150, 600]);
     try {
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification("¡Tu repartidor llegó!", { body: `Pedido #${order.code}. Ya puedes pagar.` });

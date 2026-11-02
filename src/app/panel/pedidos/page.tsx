@@ -64,6 +64,52 @@ function OrderDetail({ order, onChanged }: { order: Order; onChanged: () => void
         <span className="ml-auto text-xs text-slate-500">{dateTime(order.created_at)}</span>
       </div>
 
+      {order.status !== "cancelado" && (order.status === "entregado" || order.payment_status === "reportado" || order.payment_status === "rechazado") && (
+        <div className="rounded-2xl border-2 border-orange-200 bg-orange-50 p-4">
+          <p className="font-bold text-orange-900">Pago informado · {driverName ?? "repartidor"}</p>
+          <p className="text-2xl font-extrabold">{money(order.amount_received ?? order.total)}</p>
+          <p className="text-sm text-orange-900/80">
+            {order.payment_method === "efectivo" ? "Recibe el efectivo del repartidor y confirma." : "Revisa tu app de Yape/Plin y confirma que el pago llegó."}
+            {order.operation_code ? ` · Operación ${order.operation_code}` : ""}
+          </p>
+          {order.payment_status === "reportado" && order.status !== "entregado" && (
+            <p className="mt-1 text-sm font-semibold text-orange-900">Al validar, el pedido se marca como entregado automáticamente.</p>
+          )}
+          {order.payment_status === "rechazado" && order.status !== "entregado" && (
+            <p className="mt-1 text-sm font-semibold text-rose-700">Marcaste que el pago no llegó. Esperando un nuevo cobro o comprobante.</p>
+          )}
+          {order.payment_status === "reportado" && (
+            <div className="mt-3 grid gap-2">
+              <button onClick={() => run("ok", "validate_payment", { p_order_id: order.id, p_valid: true })} disabled={busy !== null} className="cta-success">
+                {busy === "ok" ? <Spinner className="h-5 w-5" /> : <CircleCheck className="h-5 w-5" />} Validar pago
+              </button>
+              <button onClick={() => run("no", "validate_payment", { p_order_id: order.id, p_valid: false })} disabled={busy !== null} className="cta-danger">
+                <CircleX className="h-5 w-5" /> No llegó
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+
+      {(order.status === "pendiente" || order.status === "aceptado") && (
+        <div className="space-y-2">
+          <p className="text-lg font-extrabold">¿Quién lo lleva?</p>
+          <div className="grid gap-2">
+            <button onClick={() => run("yo", "assign_order", { p_order_id: order.id })} disabled={busy !== null} className={order.driver_id === profile.id ? "cta-primary" : "cta-outline"}>
+              <Hand className="h-5 w-5" /> Yo lo llevo {order.driver_id === profile.id && "✓"}
+            </button>
+            {drivers.filter((d) => d.active && d.accepted && d.profiles.has_pin).map((d) => (
+              <button key={d.user_id} onClick={() => run(d.user_id, "assign_order", { p_order_id: order.id, p_driver_id: d.user_id })} disabled={busy !== null} className={order.driver_id === d.user_id ? "cta-primary" : "cta-outline"}>
+                <Bike className="h-5 w-5" /> {d.profiles.full_name} {order.driver_id === d.user_id && "✓"}
+              </button>
+            ))}
+          </div>
+          {drivers.length === 0 && <p className="text-xs text-slate-500">Agrega repartidores en la sección Equipo.</p>}
+        </div>
+      )}
+
+
       <OrderTimeline order={order} />
 
       <Map
@@ -92,55 +138,11 @@ function OrderDetail({ order, onChanged }: { order: Order; onChanged: () => void
       <OrderItems order={order} />
       <OrderProofsOwner order={order} />
 
-      {order.status !== "cancelado" && (order.status === "entregado" || order.payment_status === "reportado" || order.payment_status === "rechazado") && (
-        <div className="rounded-2xl border-2 border-orange-200 bg-orange-50 p-4">
-          <p className="font-bold text-orange-900">Pago informado · {driverName ?? "repartidor"}</p>
-          <p className="text-2xl font-extrabold">{money(order.amount_received ?? order.total)}</p>
-          <p className="text-sm text-orange-900/80">
-            {order.payment_method === "efectivo" ? "Recibe el efectivo del repartidor y confirma." : "Revisa tu app de Yape/Plin y confirma que el pago llegó."}
-            {order.operation_code ? ` · Operación ${order.operation_code}` : ""}
-          </p>
-          {order.payment_status === "reportado" && order.status !== "entregado" && (
-            <p className="mt-1 text-sm font-semibold text-orange-900">Al validar, el pedido se marca como entregado automáticamente.</p>
-          )}
-          {order.payment_status === "rechazado" && order.status !== "entregado" && (
-            <p className="mt-1 text-sm font-semibold text-rose-700">Marcaste que el pago no llegó. Esperando un nuevo cobro o comprobante.</p>
-          )}
-          {order.payment_status === "reportado" && (
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <button onClick={() => run("ok", "validate_payment", { p_order_id: order.id, p_valid: true })} disabled={busy !== null} className="btn-success">
-                {busy === "ok" ? <Spinner className="h-5 w-5" /> : <CircleCheck className="h-5 w-5" />} Validar pago
-              </button>
-              <button onClick={() => run("no", "validate_payment", { p_order_id: order.id, p_valid: false })} disabled={busy !== null} className="btn-outline text-rose-600">
-                <CircleX className="h-5 w-5" /> No llegó
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {(order.status === "pendiente" || order.status === "aceptado") && (
-        <div className="space-y-2">
-          <label className="label">Repartidor</label>
-          <div className="grid gap-2">
-            <button onClick={() => run("yo", "assign_order", { p_order_id: order.id })} disabled={busy !== null} className={order.driver_id === profile.id ? "btn-primary" : "btn-outline"}>
-              <Hand className="h-5 w-5" /> Yo lo llevo {order.driver_id === profile.id && "✓"}
-            </button>
-            {drivers.filter((d) => d.active && d.accepted && d.profiles.has_pin).map((d) => (
-              <button key={d.user_id} onClick={() => run(d.user_id, "assign_order", { p_order_id: order.id, p_driver_id: d.user_id })} disabled={busy !== null} className={order.driver_id === d.user_id ? "btn-primary" : "btn-outline"}>
-                <Bike className="h-5 w-5" /> {d.profiles.full_name} {order.driver_id === d.user_id && "✓"}
-              </button>
-            ))}
-          </div>
-          {drivers.length === 0 && <p className="text-xs text-slate-500">Agrega repartidores en la sección Equipo.</p>}
-        </div>
-      )}
-
       {order.status === "aceptado" && order.driver_id === profile.id && (
         <p className="text-sm text-slate-600">Para entregar y cobrar tú mismo, abre el pedido en la vista de repartidor.</p>
       )}
       {order.driver_id === profile.id && ACTIVE_STATUSES.includes(order.status) && order.status !== "pendiente" && (
-        <a href={`/repartidor/pedido/${order.id}`} className="btn-primary w-full"><Bike className="h-5 w-5" /> Abrir como repartidor</a>
+        <a href={`/repartidor/pedido/${order.id}`} className="cta-primary"><Bike className="h-5 w-5" /> Abrir como repartidor</a>
       )}
 
       {(order.status === "pendiente" || order.status === "aceptado" || order.status === "en_camino") && (

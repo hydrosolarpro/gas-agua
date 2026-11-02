@@ -184,7 +184,7 @@ export default function Suscripcion() {
             setError("");
             setOpen(true);
           }}
-          className="btn-gas w-full"
+          className="cta-gas"
         >
           <Wallet className="h-5 w-5" /> {plan.phase === "demo" ? "Ya pagué" : "Renovar plan"}
         </button>
@@ -289,7 +289,7 @@ export default function Suscripcion() {
           </div>
           <ProofPicker file={file} onChange={setFile} label="Captura o foto del pago (recomendado)" />
           <ErrorText>{error}</ErrorText>
-          <button onClick={report} disabled={saving} className="btn-primary w-full">
+          <button onClick={report} disabled={saving} className="cta-primary">
             {saving && <Spinner className="h-5 w-5" />} Enviar aviso de pago
           </button>
         </div>

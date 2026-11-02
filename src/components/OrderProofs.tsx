@@ -159,11 +159,14 @@ export function OrderProofsClient({ order }: { order: Order }) {
       </p>
       {proofs.length > 0 && <ProofList proofs={proofs} order={order} />}
       {!locked && (
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-2">
           {concepts.map((c) => (
-            <button key={c} onClick={() => openFor(c)} className="btn-outline px-4 py-2.5 text-sm">
-              <Plus className="h-4 w-4" /> Pago de {CONCEPT_NAME[c].toLowerCase()}
-              {totals[c] !== undefined && <span className="text-slate-500">({money(totals[c]!)})</span>}
+            <button key={c} onClick={() => openFor(c)} className="cta-success">
+              <Plus className="h-6 w-6 shrink-0" />
+              <span className="text-left leading-tight">
+                Subir comprobante de {CONCEPT_NAME[c].toLowerCase()}
+                {totals[c] !== undefined && <span className="block text-sm font-semibold opacity-90">{money(totals[c]!)}</span>}
+              </span>
             </button>
           ))}
         </div>
@@ -212,7 +215,7 @@ export function OrderProofsClient({ order }: { order: Order }) {
           </div>
           <ProofPickerMulti files={files} onChange={setFiles} />
           <ErrorText>{error}</ErrorText>
-          <button onClick={save} disabled={saving} className="btn-primary w-full">
+          <button onClick={save} disabled={saving} className="cta-primary">
             {saving && <Spinner className="h-5 w-5" />} Enviar comprobante
           </button>
         </div>

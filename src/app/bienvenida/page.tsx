@@ -78,7 +78,7 @@ function Bienvenida() {
             <p className="mt-1 text-xs text-slate-500">El repartidor te llamará si no encuentra tu dirección.</p>
           </div>
           <ErrorText>{error}</ErrorText>
-          <button onClick={save} disabled={saving} className="btn-gas w-full">
+          <button onClick={save} disabled={saving} className="cta-gas">
             {saving && <Spinner className="h-5 w-5" />} Empezar a pedir
           </button>
         </div>

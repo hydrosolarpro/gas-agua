@@ -5,7 +5,7 @@ import { CategoryIcon, MapPin, MethodMark, Package, Search } from "@/components/
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Minus, Phone, Plus, ShoppingBag } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Minus, Phone, Plus, ShoppingBag } from "lucide-react";
 import { LocationPicker, type PickedLocation } from "@/components/LocationPicker";
 import { Empty, ErrorText, FullLoader, Spinner, TopBar } from "@/components/ui";
 import { CATEGORY, errorMessage, METHOD, money, telLink } from "@/lib/format";
@@ -37,6 +37,7 @@ export default function StorePage() {
   const [cashAmount, setCashAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [sending, setSending] = useState(false);
+  const [visitedLoc, setVisitedLoc] = useState(false);
   const [error, setError] = useState("");
   const [prefilled, setPrefilled] = useState(false);
 
@@ -96,6 +97,11 @@ export default function StorePage() {
       return next;
     });
 
+  const hasLoc = Boolean(location.point && location.address.trim().length >= 4);
+  const totalSteps = visitedLoc || !hasLoc ? 3 : 2;
+  const stepNo = step === "productos" ? 1 : step === "ubicacion" ? 2 : totalSteps;
+  const stepName = step === "productos" ? "Elige tus productos" : step === "ubicacion" ? "¿Dónde entregamos?" : "Confirma tu pedido";
+
   function next() {
     setError("");
     if (step === "productos") {
@@ -107,7 +113,13 @@ export default function StorePage() {
         router.push(`/bienvenida?next=${encodeURIComponent(`/n/${slug}?paso=ubicacion`)}`);
         return;
       }
-      setStep("ubicacion");
+      // Quien ya tiene su dirección guardada salta ese paso (puede cambiarla desde la confirmación).
+      if (location.point && location.address.trim().length >= 4) {
+        setStep("pago");
+      } else {
+        setVisitedLoc(true);
+        setStep("ubicacion");
+      }
     } else if (step === "ubicacion") {
       if (!location.point) return setError("Marca en el mapa dónde entregamos tu pedido");
       if (location.address.trim().length < 4) return setError("Escribe tu dirección");
@@ -186,18 +198,18 @@ export default function StorePage() {
                 </h2>
                 <div className="grid gap-2 md:grid-cols-2">
                   {list.map((p) => (
-                    <div key={p.id} className="card flex items-center gap-3 p-3">
+                    <div key={p.id} className="card flex min-w-0 items-center gap-3 p-3">
                       <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-3xl ${p.category === "gas" ? "bg-gas-50" : "bg-agua-50"}`}>
                         <CategoryIcon category={p.category} className={`h-7 w-7 ${p.category === "gas" ? "text-gas-600" : "text-agua-600"}`} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-bold leading-tight">{p.name}</p>
-                        {p.description && <p className="truncate text-xs text-slate-500">{p.description}</p>}
+                        {p.description && <p className="line-clamp-1 text-xs text-slate-500">{p.description}</p>}
                         <p className="mt-1 font-extrabold text-agua-700">{money(p.price)}</p>
                         {p.stock !== null && p.stock > 0 && p.stock <= 5 && <p className="text-xs font-semibold text-orange-700">Quedan {p.stock}</p>}
                       </div>
                       {cart[p.id] ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex shrink-0 items-center gap-2">
                           <button onClick={() => setQty(p.id, -1)} className="rounded-full bg-slate-100 p-2" aria-label="Quitar uno">
                             <Minus className="h-4 w-4" />
                           </button>
@@ -241,7 +253,12 @@ export default function StorePage() {
                 <span>Total</span>
                 <span>{money(total)}</span>
               </div>
-              <p className="mt-3 text-sm text-slate-600"><MapPin className="mr-1 inline h-4 w-4 -mt-0.5 text-gas-600" />{location.address}</p>
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3">
+                <p className="min-w-0 text-sm text-slate-700"><MapPin className="mr-1 inline h-4 w-4 -mt-0.5 text-gas-600" />Entregamos en <b>{location.address}</b></p>
+                <button onClick={() => { setVisitedLoc(true); setStep("ubicacion"); }} className="shrink-0 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-agua-700 shadow-sm">
+                  Cambiar
+                </button>
+              </div>
             </section>
 
             <section>
@@ -282,33 +299,37 @@ export default function StorePage() {
       </main>
 
       {count > 0 && (
-        <div className="shrink-0 border-t border-slate-200 bg-white p-3">
-          <div className="mx-auto flex max-w-lg items-center gap-3">
-            {step !== "productos" && (
-              <button
-                onClick={() => setStep(step === "pago" ? "ubicacion" : "productos")}
-                className="btn-ghost shrink-0 px-4"
-                aria-label="Volver al paso anterior"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-            )}
-            {step === "pago" ? (
-              <button onClick={submit} disabled={sending || !method} className="btn-gas flex-1 whitespace-nowrap">
-                {sending && <Spinner className="h-5 w-5" />} Confirmar pedido · {money(total)}
-              </button>
-            ) : (
-              <button onClick={next} className="btn-primary flex-1 justify-between gap-3 whitespace-nowrap">
-                <span className="flex items-center gap-2">
-                  <ShoppingBag className="h-5 w-5" />
-                  {step === "productos" ? `${count} ${count === 1 ? "producto" : "productos"}` : "Continuar"}
-                </span>
-                <span>
-                  {step === "productos" ? "Continuar · " : ""}
-                  {money(total)}
-                </span>
-              </button>
-            )}
+        <div className="shrink-0 border-t border-slate-200 bg-white p-3 shadow-[0_-10px_28px_-16px_rgba(15,23,42,0.35)]">
+          <div className="mx-auto max-w-3xl space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+              <span>
+                Paso {stepNo} de {totalSteps} · {stepName}
+              </span>
+              <span>
+                {count} {count === 1 ? "producto" : "productos"}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              {step !== "productos" && (
+                <button
+                  onClick={() => setStep(step === "pago" ? (visitedLoc ? "ubicacion" : "productos") : "productos")}
+                  className="btn-ghost !min-h-14 shrink-0 !px-5"
+                  aria-label="Volver al paso anterior"
+                >
+                  <ArrowLeft className="h-6 w-6" />
+                </button>
+              )}
+              {step === "pago" ? (
+                <button onClick={submit} disabled={sending || !method} className="cta-gas flex-1">
+                  {sending ? <Spinner className="h-6 w-6" /> : <Check className="h-6 w-6" />} {method ? `Confirmar pedido · ${money(total)}` : "Elige cómo pagas"}
+                </button>
+              ) : (
+                <button onClick={next} className="cta-primary flex-1">
+                  <ShoppingBag className="h-6 w-6" /> Continuar · {money(total)}
+                  <ArrowRight className="h-6 w-6" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

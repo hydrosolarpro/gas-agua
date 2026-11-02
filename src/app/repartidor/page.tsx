@@ -118,7 +118,7 @@ export default function RepartidorPage() {
           {free.map((o) => (
             <div key={o.id} className="card space-y-3 p-4">
               <OrderRow order={o} href={`/repartidor/pedido/${o.id}`} showCustomer />
-              <button onClick={() => take(o.id)} disabled={busy === o.id} className="btn-gas w-full">
+              <button onClick={() => take(o.id)} disabled={busy === o.id} className="cta-gas">
                 <Hand className="h-5 w-5" /> Tomar este pedido
               </button>
             </div>

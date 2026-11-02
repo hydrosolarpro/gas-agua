@@ -18,6 +18,13 @@
   color-scheme: light;
 }
 
+/* Las cuadrículas de una sola columna no se ensanchan por su contenido (evita desbordes laterales). */
+@layer base {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 body {
   background: #f4f7fb;
   color: var(--color-ink);
@@ -43,6 +50,24 @@ body {
 }
 @utility btn-outline {
   @apply btn border border-slate-200 bg-white text-slate-800 hover:bg-slate-50;
+}
+@utility cta {
+  @apply inline-flex min-h-14 w-full items-center justify-center gap-2.5 rounded-2xl px-6 py-3.5 text-lg font-extrabold shadow-xl transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none;
+}
+@utility cta-primary {
+  @apply cta bg-gradient-to-r from-agua-600 to-agua-500 text-white shadow-agua-500/30 hover:brightness-105;
+}
+@utility cta-gas {
+  @apply cta bg-gradient-to-r from-gas-600 to-gas-500 text-white shadow-gas-500/30 hover:brightness-105;
+}
+@utility cta-success {
+  @apply cta bg-emerald-600 text-white shadow-emerald-600/30 hover:bg-emerald-700;
+}
+@utility cta-outline {
+  @apply cta border-2 border-slate-200 bg-white text-slate-800 shadow-none hover:bg-slate-50;
+}
+@utility cta-danger {
+  @apply cta border-2 border-rose-300 bg-white text-rose-600 shadow-none hover:bg-rose-50;
 }
 @utility input {
   @apply w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition placeholder:text-slate-400 focus:border-agua-500 focus:ring-4 focus:ring-agua-100;

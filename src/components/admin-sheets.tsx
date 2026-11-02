@@ -110,7 +110,7 @@ export function RegisterPaymentSheet({ owner, onClose }: { owner: OwnerRow | nul
           </div>
           <ProofPicker file={file} onChange={setFile} label="Captura o foto del pago (opcional)" />
           <ErrorText>{error}</ErrorText>
-          <button onClick={save} disabled={saving} className="btn-success w-full">
+          <button onClick={save} disabled={saving} className="cta-success">
             {saving && <Spinner className="h-5 w-5" />} Guardar pago validado
           </button>
         </div>
@@ -164,7 +164,7 @@ export function FeeSheet({ owner, onClose }: { owner: OwnerRow | null; onClose: 
             <p className="mt-1 text-xs text-slate-500">Úsalo para dar un descuento o un precio especial a este negocio.</p>
           </div>
           <ErrorText>{error}</ErrorText>
-          <button onClick={save} disabled={saving} className="btn-primary w-full">
+          <button onClick={save} disabled={saving} className="cta-primary">
             {saving && <Spinner className="h-5 w-5" />} Guardar monto
           </button>
         </div>
@@ -283,7 +283,7 @@ export function InviteSheet({ open, onClose }: { open: boolean; onClose: () => v
             </div>
           </div>
           <ErrorText>{error}</ErrorText>
-          <button onClick={create} disabled={busy} className="btn-primary w-full">
+          <button onClick={create} disabled={busy} className="cta-primary">
             {busy && <Spinner className="h-5 w-5" />} Crear enlace de invitación
           </button>
         </div>

@@ -159,7 +159,7 @@ export default function ProductosPage() {
               <p className="mt-1 text-xs text-slate-500">Cuántas unidades tienes hoy. Se descuenta con cada pedido y vuelve si lo cancelan.</p>
             </div>
             <ErrorText>{error}</ErrorText>
-            <button onClick={save} disabled={saving} className="btn-primary w-full">
+            <button onClick={save} disabled={saving} className="cta-primary">
               {saving && <Spinner className="h-5 w-5" />} Guardar
             </button>
           </div>

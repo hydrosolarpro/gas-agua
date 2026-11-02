@@ -65,7 +65,7 @@ export function NotifyProvider({ children }: { children: ReactNode }) {
       setToasts((t) => [{ ...n, id, silent }, ...t].slice(0, 4));
       setTimeout(() => dismiss(id), LIFETIME_MS);
       try {
-        navigator.vibrate?.([200, 100, 200]);
+        if (navigator.userActivation?.hasBeenActive) navigator.vibrate?.([200, 100, 200]);
         if (document.hidden && "Notification" in window && Notification.permission === "granted") {
           new Notification(n.title, { body: n.body });
         }

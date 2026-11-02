@@ -127,7 +127,7 @@ export default function Invitacion() {
                   </div>
                 </div>
                 <ErrorText>{error}</ErrorText>
-                <button onClick={next} className="btn-primary w-full">
+                <button onClick={next} className="cta-primary">
                   Continuar
                 </button>
               </>

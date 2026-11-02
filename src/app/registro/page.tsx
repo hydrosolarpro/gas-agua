@@ -86,7 +86,7 @@ function RegistroForm() {
                 <PhoneInput value={phone} onChange={setPhone} />
               </div>
               <ErrorText>{error}</ErrorText>
-              <button onClick={continueData} className="btn-primary w-full">
+              <button onClick={continueData} className="cta-primary">
                 Continuar
               </button>
             </>
