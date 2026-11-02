@@ -11,7 +11,7 @@ type CustomerRow = {
   customer_id: string;
   source: "invitacion" | "pedido";
   created_at: string;
-  profile: { full_name: string; phone: string | null; role: string; has_pin: boolean } | null;
+  profile: { full_name: string; phone: string | null; role: string; has_pin: boolean; deactivated_at: string | null } | null;
 };
 type InviteRow = { id: string; note: string | null; expires_at: string; uses: number; revoked: boolean; created_at: string };
 
@@ -35,7 +35,7 @@ export default function Clientes() {
     const [c, i] = await Promise.all([
       db
         .from("business_customers")
-        .select("customer_id, source, created_at, profile:profiles!business_customers_customer_id_fkey(full_name, phone, role, has_pin)")
+        .select("customer_id, source, created_at, profile:profiles!business_customers_customer_id_fkey(full_name, phone, role, has_pin, deactivated_at)")
         .eq("business_id", business.id)
         .order("created_at", { ascending: false })
         .returns<CustomerRow[]>(),
@@ -134,7 +134,8 @@ export default function Clientes() {
       <div className="space-y-3">
         {list.map((c) => {
           const otroDueno = c.profile?.role === "dueno" && c.customer_id !== business.owner_id;
-          const puedeReiniciar = c.profile?.role === "cliente";
+          const baja = Boolean(c.profile?.deactivated_at);
+          const puedeReiniciar = c.profile?.role === "cliente" && !baja;
           const sinPin = puedeReiniciar && c.profile?.has_pin === false;
           const phone = c.profile?.phone;
           return (
@@ -147,7 +148,8 @@ export default function Clientes() {
                     {c.source === "invitacion" ? "Invitado" : "Hizo un pedido"}
                   </span>
                   {otroDueno && <span className="chip bg-violet-100 text-violet-800">Dueño de otro negocio</span>}
-                  {sinPin && <span className="chip bg-orange-100 text-orange-800">Debe crear su PIN</span>}
+                  {sinPin && !baja && <span className="chip bg-orange-100 text-orange-800">Debe crear su PIN</span>}
+                  {baja && <span className="chip bg-slate-200 text-slate-700">Dado de baja</span>}
                   <span className="text-xs text-slate-400">{dateTime(c.created_at)}</span>
                 </div>
               </div>

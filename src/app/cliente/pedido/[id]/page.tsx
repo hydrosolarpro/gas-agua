@@ -113,6 +113,11 @@ export default function SeguimientoPage() {
             <div className="min-w-0 flex-1">
               <p className="text-xs text-slate-500">Tu repartidor</p>
               <p className="truncate font-bold">{driver.full_name}</p>
+              {driver.phone && (
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                  <Phone className="h-4 w-4 text-slate-500" /> {driver.phone}
+                </p>
+              )}
             </div>
             {driver.phone && (
               <>

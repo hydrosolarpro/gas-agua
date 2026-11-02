@@ -3,7 +3,7 @@ import { isLocked, isWeakPin, PHONE_RE, PIN_RE, pinEmail, pinPassword, recordAtt
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
 
 const NOT_PENDING =
-  "No hay un acceso pendiente para este celular. Pide a tu negocio que te registre o que reinicie tu PIN.";
+  "No hay un acceso pendiente para este celular. Si ya tienes cuenta con este número (por ejemplo de cliente o dueño), entra por «Ingresar» con tu PIN de siempre y acepta la invitación. Si no, pide a tu negocio que te registre o que reinicie tu PIN.";
 
 // Crear un PIN nuevo (repartidor o cliente): solo se puede mientras el dueño del negocio lo haya registrado o reiniciado, y dentro del plazo.
 export async function POST(request: Request) {

@@ -93,6 +93,11 @@ export default function EntregaPage() {
           <div>
             <p className="text-xs text-slate-500">Cliente</p>
             <p className="text-xl font-bold">{order.customer_name || "Cliente"}</p>
+            {order.customer_phone && (
+              <p className="mt-0.5 flex items-center gap-1.5 text-lg font-semibold text-slate-700">
+                <Phone className="h-4 w-4 text-slate-500" /> {order.customer_phone}
+              </p>
+            )}
             <p className="mt-1 text-slate-700"><MapPin className="mr-1 inline h-4 w-4 -mt-0.5 text-gas-600" />{order.address_text}</p>
             {order.reference && <p className="text-sm text-slate-500"><House className="mr-1 inline h-4 w-4 -mt-0.5" />{order.reference}</p>}
             {order.notes && <p className="mt-1 text-sm text-slate-500"><StickyNote className="mr-1 inline h-4 w-4 -mt-0.5" />{order.notes}</p>}
@@ -107,10 +112,10 @@ export default function EntregaPage() {
             {order.customer_phone && (
               <>
                 <a href={telLink(order.customer_phone)} className="btn-ghost px-3 text-sm">
-                  <Phone className="h-4 w-4" /> Llamar
+                  <Phone className="h-4 w-4" /> Llamar al cliente
                 </a>
                 <a href={waLink(order.customer_phone, `Hola ${order.customer_name}, soy tu repartidor de ${business?.name ?? "AguaGasExpress"}. Pedido #${order.code}.`)} target="_blank" className="btn-ghost px-3 text-sm text-emerald-700">
-                  <MessageCircle className="h-4 w-4" /> WhatsApp
+                  <MessageCircle className="h-4 w-4" /> WhatsApp al cliente
                 </a>
               </>
             )}

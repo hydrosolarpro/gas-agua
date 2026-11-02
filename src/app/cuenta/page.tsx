@@ -5,6 +5,7 @@ import { Mail, Phone, Store } from "@/components/icons";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { KeyRound, LogOut } from "lucide-react";
+import { BajaButton } from "@/components/BajaButton";
 import { PinInput } from "@/components/PinInput";
 import { ErrorText, FullLoader, Spinner, TopBar } from "@/components/ui";
 import { homeFor, preferredRole, useSession } from "@/lib/hooks";
@@ -85,6 +86,7 @@ export default function CuentaPage() {
         <button onClick={logout} className="btn-outline w-full text-rose-600">
           <LogOut className="h-5 w-5" /> Cerrar sesión
         </button>
+        {profile.role === "cliente" && !profile.is_admin && <BajaButton />}
       </main>
     </div>
   );

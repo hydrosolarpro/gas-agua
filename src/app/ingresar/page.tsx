@@ -131,6 +131,8 @@ function IngresarForm() {
   const [loading, setLoading] = useState<"pin" | null>(null);
   const [error, setError] = useState("");
   const [mismatch, setMismatch] = useState<AppRole | null>(null);
+  const [invites, setInvites] = useState<{ business_id: string; name: string }[]>([]);
+  const [accepting, setAccepting] = useState(false);
 
   async function loginPin(value = pin) {
     if (phone.length !== 9) return setError("Ingresa tu celular de 9 dígitos");
@@ -158,6 +160,21 @@ function IngresarForm() {
     if (p) {
       const caps = capabilities(p);
       if (!caps.includes(rol)) {
+        // Un celular que ya tiene otra cuenta (cliente, etc.) puede ser repartidor: si un negocio lo invitó, acepta aquí mismo.
+        if (rol === "repartidor" && u.user) {
+          const { data: inv } = await db
+            .from("business_members")
+            .select("business_id, businesses(name)")
+            .eq("user_id", u.user.id)
+            .eq("accepted", false)
+            .returns<{ business_id: string; businesses: { name: string } | null }[]>();
+          if (inv && inv.length > 0) {
+            setInvites(inv.map((x) => ({ business_id: x.business_id, name: x.businesses?.name ?? "un negocio" })));
+            setPin("");
+            setLoading(null);
+            return;
+          }
+        }
         setMismatch(caps[0]);
         setPin("");
         setLoading(null);
@@ -168,6 +185,23 @@ function IngresarForm() {
     // El dueño siempre empieza en su Resumen, salvo que viniera de otra página de su panel.
     router.replace(rol === "dueno" && !next.startsWith("/panel") ? "/panel" : next);
     router.refresh();
+  }
+
+  async function answerInvite(businessId: string, accept: boolean) {
+    setAccepting(true);
+    const db = supabaseBrowser();
+    await db.rpc(accept ? "accept_driver_invitation" : "decline_driver_invitation", { p_business_id: businessId });
+    setAccepting(false);
+    const rest = invites.filter((i) => i.business_id !== businessId);
+    setInvites(rest);
+    if (accept) {
+      rememberRole("repartidor");
+      router.replace("/repartidor");
+      router.refresh();
+    } else if (rest.length === 0) {
+      router.replace("/inicio");
+      router.refresh();
+    }
   }
 
   return (
@@ -189,6 +223,24 @@ function IngresarForm() {
           </div>
         </div>
 
+        {invites.length > 0 && (
+          <div className="mt-6 space-y-3">
+            {invites.map((i) => (
+              <div key={i.business_id} className="space-y-3 rounded-2xl border-2 border-agua-200 p-4">
+                <p className="font-bold">{i.name} te invitó como repartidor</p>
+                <p className="text-sm text-slate-600">Si aceptas, entras como repartidor con este mismo celular y PIN. Tu otra cuenta sigue igual.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => answerInvite(i.business_id, true)} disabled={accepting} className="btn-primary px-3 py-2.5 text-sm">
+                    Aceptar y entrar
+                  </button>
+                  <button onClick={() => answerInvite(i.business_id, false)} disabled={accepting} className="btn-outline px-3 py-2.5 text-sm">
+                    Ahora no
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="mt-6" />
         {rol === "repartidor" && (
           <div className="mb-5 flex gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">

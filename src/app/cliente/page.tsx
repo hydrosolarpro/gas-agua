@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { UserRound } from "lucide-react";
 import { ORDER_SELECT, OrderRow } from "@/components/orders";
 import { Empty, FullLoader, Logo } from "@/components/ui";
+import { BajaButton } from "@/components/BajaButton";
 import { ACTIVE_STATUSES } from "@/lib/format";
 import { rememberRole, useSession } from "@/lib/hooks";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -147,6 +148,13 @@ export default function ClientePage() {
             {past.map((o) => (
               <OrderRow key={o.id} order={o} href={`/cliente/pedido/${o.id}`} />
             ))}
+          </section>
+        )}
+
+        {profile.role === "cliente" && !profile.is_admin && (
+          <section className="space-y-2 pb-4 pt-2">
+            <p className="text-center text-sm text-slate-500">¿Ya no quieres usar AguaGasExpress?</p>
+            <BajaButton />
           </section>
         )}
       </main>
