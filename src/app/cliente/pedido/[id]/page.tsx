@@ -4,11 +4,13 @@ import { Bike, MapPin, Search, Store } from "@/components/icons";
 
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Copy, MessageCircle, Phone } from "lucide-react";
+import { MessageCircle, Phone } from "lucide-react";
 import Map, { type MapMarker } from "@/components/map/Map";
 import { OrderItems, OrderTimeline } from "@/components/orders";
 import { OrderProofsClient } from "@/components/OrderProofs";
+import { CopyField } from "@/components/CopyField";
 import { Empty, ErrorText, FullLoader, MethodBadge, PayBadge, TopBar } from "@/components/ui";
+import { hasArrived } from "@/lib/arrival";
 import { errorMessage, money, telLink, waLink } from "@/lib/format";
 import { formatDistance, formatEta } from "@/lib/geo";
 import { useDriverLocation, useOrder, useRoute, useSession } from "@/lib/hooks";
@@ -23,7 +25,6 @@ export default function SeguimientoPage() {
   const { order } = useOrder(id);
   const [business, setBusiness] = useState<Business | null>(null);
   const [driver, setDriver] = useState<Person | null>(null);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
 
   const tracking = order && (order.status === "aceptado" || order.status === "en_camino");
@@ -31,6 +32,13 @@ export default function SeguimientoPage() {
   const destination = useMemo(() => (order ? { lat: order.lat, lng: order.lng } : null), [order]);
   const driverPoint = driverLoc ? { lat: driverLoc.lat, lng: driverLoc.lng } : null;
   const route = useRoute(driverPoint, destination);
+  // Una vez que llega (o ya entregó) el pago queda a la vista; no se oculta si el GPS rebota.
+  const [arrivedSeen, setArrivedSeen] = useState(false);
+  const arrivedNow = Boolean(tracking && hasArrived(driverPoint, destination));
+  useEffect(() => {
+    if (arrivedNow) setArrivedSeen(true); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [arrivedNow]);
+  const arrived = arrivedSeen || arrivedNow;
 
   useEffect(() => {
     if (!order) return;
@@ -117,24 +125,22 @@ export default function SeguimientoPage() {
             {order.status === "entregado" ? <PayBadge status={order.payment_status} /> : <MethodBadge method={order.payment_method} />}
           </div>
           <p className="text-3xl font-extrabold">{money(order.total)}</p>
-          {payNumber && order.status !== "entregado" && order.status !== "cancelado" && (
-            <button
-              onClick={() => {
-                navigator.clipboard?.writeText(payNumber);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
-              className="flex w-full items-center justify-between rounded-2xl bg-slate-50 p-4 text-left"
-            >
-              <span>
-                <span className="block text-xs text-slate-500">{order.payment_method === "otro" ? `Paga a: ${business?.other_pay_name ?? "otra plataforma"}` : "Al recibir, paga al número"}</span>
-                <span className="text-lg font-bold">{payNumber}</span>
-                {business?.payment_holder && <span className="block text-xs text-slate-500">{business.payment_holder}</span>}
-              </span>
-              <span className="flex items-center gap-1 text-sm font-semibold text-agua-700">
-                <Copy className="h-4 w-4" /> {copied ? "¡Copiado!" : "Copiar"}
-              </span>
-            </button>
+          {order.status !== "cancelado" && order.status !== "entregado" && !arrived && (
+            <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+              Pagarás cuando tu repartidor llegue. Te avisaremos aquí y te mostraremos los datos para pagar.
+            </p>
+          )}
+          {arrived && order.status !== "entregado" && order.status !== "cancelado" && (
+            <p className="rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
+              ¡Tu repartidor llegó! {order.payment_method === "efectivo" ? "Entrégale el pago en efectivo." : "Paga ahora con los datos de abajo y sube tu captura."}
+            </p>
+          )}
+          {payNumber && (arrived || order.status === "entregado") && order.payment_status !== "validado" && (
+            <CopyField
+              label={order.payment_method === "otro" ? `Paga a: ${business?.other_pay_name ?? "otra plataforma"}` : `Paga por ${order.payment_method === "yape" ? "Yape" : "Plin"} al número`}
+              value={payNumber}
+              hint={business?.payment_holder ? `Titular: ${business.payment_holder}` : undefined}
+            />
           )}
           {order.payment_method === "efectivo" && order.cash_amount && (
             <p className="text-sm text-slate-600">
@@ -143,7 +149,7 @@ export default function SeguimientoPage() {
           )}
         </section>
 
-        {order.status !== "cancelado" && order.payment_method !== "efectivo" && <OrderProofsClient order={order} />}
+        {(arrived || order.status === "entregado") && order.status !== "cancelado" && order.payment_method !== "efectivo" && <OrderProofsClient order={order} />}
 
         <section className="card space-y-3 p-5">
           <h2 className="font-bold">Detalle</h2>

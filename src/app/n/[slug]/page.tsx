@@ -6,9 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Minus, Phone, Plus, ShoppingBag } from "lucide-react";
-import { CopyField } from "@/components/CopyField";
 import { LocationPicker, type PickedLocation } from "@/components/LocationPicker";
-import { ProofPickerMulti, uploadProofs } from "@/components/proof";
 import { Empty, ErrorText, FullLoader, Spinner, TopBar } from "@/components/ui";
 import { CATEGORY, errorMessage, METHOD, money, telLink } from "@/lib/format";
 import { useSession } from "@/lib/hooks";
@@ -39,7 +37,6 @@ export default function StorePage() {
   const [cashAmount, setCashAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [sending, setSending] = useState(false);
-  const [proofFiles, setProofFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [prefilled, setPrefilled] = useState(false);
 
@@ -139,22 +136,6 @@ export default function StorePage() {
       sessionStorage.removeItem(`cart:${slug}`);
     } catch {}
     const orderId = (data as { id: string }).id;
-    // Si ya pagó y subió la captura, la enviamos al dueño junto con el pedido. Si falla, la puede subir después en el seguimiento.
-    if (proofFiles.length > 0 && method !== "efectivo") {
-      try {
-        const cats = new Set(items.map((p) => p.category));
-        const [first, ...rest] = await uploadProofs("orders", orderId, proofFiles);
-        await supabaseBrowser().rpc("add_order_proof", {
-          p_order_id: orderId,
-          p_concept: cats.size === 1 ? [...cats][0] : "otro",
-          p_amount: total,
-          p_method: method === "otro" ? "otro" : method,
-          p_code: null,
-          p_proof: first,
-          p_extra: rest,
-        });
-      } catch {}
-    }
     router.replace(`/cliente/pedido/${orderId}?nuevo=1`);
   }
 
@@ -275,17 +256,10 @@ export default function StorePage() {
                 </div>
               )}
               {(method === "yape" || method === "plin" || method === "otro") && (
-                <div className="mt-4 space-y-3">
-                  <CopyField
-                    label={method === "otro" ? `Paga a: ${business.other_pay_name}` : `Paga por ${METHOD[method].label} al número`}
-                    value={(method === "yape" ? business.yape_number : method === "plin" ? business.plin_number : business.other_pay_value) ?? ""}
-                    hint={business.payment_holder ? `Titular: ${business.payment_holder}` : undefined}
-                  />
-                  <p className="text-sm text-slate-600">
-                    Puedes pagar ahora y subir tu captura, o pagar al recibir y mostrar la confirmación al repartidor.
-                  </p>
-                  <ProofPickerMulti files={proofFiles} onChange={setProofFiles} label="Capturas de tu pago (opcional)" />
-                </div>
+                <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+                  Pagarás cuando tu repartidor llegue a la puerta. Ahí te avisaremos y te mostraremos los datos de{" "}
+                  <b>{methodLabel(method)}</b> para copiar, y podrás subir tu captura de pago.
+                </p>
               )}
             </section>
             <div>
