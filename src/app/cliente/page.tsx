@@ -1,6 +1,7 @@
 "use client";
 
 import { Bike, Store } from "@/components/icons";
+import { BusinessLogo, OpenChip } from "@/components/BusinessBadge";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -149,9 +150,10 @@ export default function ClientePage() {
           )}
           {others.map((b) => (
             <Link key={b.id} href={`/n/${b.slug}`} className="card flex items-center gap-3 p-4 hover:shadow-md">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-agua-50"><Store className="h-6 w-6 text-agua-600" /></span>
+              <BusinessLogo business={b} size="md" />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-bold">{b.name}</p>
+                <OpenChip hours={b.opening_hours} />
                 <p className="text-xs text-slate-500">
                   {[b.yape_number && "Yape", b.plin_number && "Plin", "Efectivo"].filter(Boolean).join(" · ")}
                 </p>

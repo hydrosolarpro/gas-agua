@@ -6,12 +6,14 @@ import Link from "next/link";
 import { SupportCard } from "@/components/SupportCard";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { Copy } from "lucide-react";
+import { Copy, Wallet } from "lucide-react";
 import Map, { LIMA, type MapMarker } from "@/components/map/Map";
 import { OrderRow } from "@/components/orders";
 import { Empty, FullLoader } from "@/components/ui";
 import { useBusinessOrders, useDrivers } from "@/components/useBusinessOrders";
 import { ACTIVE_STATUSES, METHOD, money } from "@/lib/format";
+import { orderFinance, orderPay, sumBy } from "@/lib/finance";
+import { payLabel } from "@/lib/pay";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { DriverLocation, PaymentMethod } from "@/lib/types";
 import { usePanel } from "@/components/panel-context";
@@ -68,7 +70,24 @@ function Resumen() {
       m,
       amount: sum(validated.filter((o) => o.payment_method === m)),
     }));
+    const fin = delivered.map((o) => orderFinance(o));
+    const withCost = fin.filter((f) => f && f.gross_profit !== null);
+    const payByDriver = new globalThis.Map<string, { orders: number; total: number; amount: number; pending: number }>();
+    for (const o of delivered) {
+      if (!o.driver_id) continue;
+      const row = payByDriver.get(o.driver_id) ?? { orders: 0, total: 0, amount: 0, pending: 0 };
+      const amount = orderPay(o)?.amount;
+      row.orders += 1;
+      row.total += Number(o.total);
+      if (amount === null || amount === undefined) row.pending += 1;
+      else row.amount += Number(amount);
+      payByDriver.set(o.driver_id, row);
+    }
     return {
+      gross: sumBy(withCost, (f) => f?.gross_profit),
+      net: sumBy(withCost, (f) => f?.net_profit),
+      hasProfit: withCost.length > 0,
+      payByDriver,
       total: list.length,
       active: list.filter((o) => ACTIVE_STATUSES.includes(o.status)).length,
       delivered: delivered.length,
@@ -98,7 +117,7 @@ function Resumen() {
   const TABS: { id: Tab; label: string }[] = [
     { id: "pedidos", label: `Pedidos (${activeOrders.length})` },
     { id: "mapa", label: "Mapa" },
-    { id: "ingresos", label: "Ingresos" },
+    { id: "ingresos", label: "Ingresos y pagos" },
     { id: "soporte", label: "Soporte" },
   ];
   const show = (t: Tab) => (tab === t ? "flex" : "hidden") + " lg:flex";
@@ -135,17 +154,19 @@ function Resumen() {
             </span>
           </button>
           <p className="mt-2 text-xs opacity-90">
-            Siguiente: ajusta tus precios en <Link href="/panel/productos" className="font-bold underline">Productos</Link> y agrega repartidores en <Link href="/panel/repartidores" className="font-bold underline">Equipo</Link>.
+            Siguiente: ajusta tus precios en <Link href="/panel/productos" className="font-bold underline">Mis productos</Link> y agrega repartidores en <Link href="/panel/repartidores" className="font-bold underline">Mi equipo</Link>.
           </p>
         </section>
       )}
 
-      <section className="flex shrink-0 gap-2 overflow-x-auto sm:grid sm:grid-cols-5 md:gap-3">
+      <section className="flex shrink-0 gap-2 overflow-x-auto sm:grid sm:grid-cols-4 md:gap-3 xl:grid-cols-7">
         <Kpi label="Pedidos hoy" value={String(stats.total)} tone="text-ink" />
         <Kpi label="En curso" value={String(stats.active)} tone="text-indigo-600" />
         <Kpi label="Entregados" value={String(stats.delivered)} tone="text-emerald-600" />
         <Kpi label="Ingresos validados" value={money(stats.validated)} tone="text-agua-700" />
         <Kpi label="Por validar" value={money(stats.toValidate)} tone="text-orange-600" sub={`${stats.toValidateCount} ${stats.toValidateCount === 1 ? "pago" : "pagos"}`} />
+        <Kpi label="Ganancia bruta hoy" value={stats.hasProfit ? money(stats.gross) : "—"} tone="text-emerald-700" sub={stats.hasProfit ? "ventas − costo" : "registra tus costos"} />
+        <Kpi label="Ganancia neta hoy" value={stats.hasProfit ? money(stats.net) : "—"} tone="text-emerald-700" sub={stats.hasProfit ? "− pago a repartidores" : "en Mis productos"} />
       </section>
 
       <div className="flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1 lg:hidden" role="tablist">
@@ -187,6 +208,33 @@ function Resumen() {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div className={`card max-h-52 shrink-0 flex-col overflow-y-auto p-4 ${show("ingresos")}`}>
+            <h2 className="flex items-center gap-2 font-bold"><Wallet className="h-5 w-5 text-agua-700" /> A pagar a repartidores hoy</h2>
+            {stats.payByDriver.size === 0 ? (
+              <p className="mt-2 text-sm text-slate-500">Aún no hay pedidos entregados hoy.</p>
+            ) : (
+              <ul className="mt-2 divide-y divide-slate-100">
+                {[...stats.payByDriver.entries()].map(([id, r]) => {
+                  const d = drivers.find((x) => x.user_id === id);
+                  return (
+                    <li key={id} className="flex items-center justify-between gap-3 py-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold">{d?.profiles.full_name ?? "Tú"}</p>
+                        <p className="text-xs text-slate-500">
+                          {r.orders} {r.orders === 1 ? "entrega" : "entregas"} · {money(r.total)} · {payLabel(d?.pay_type, d?.pay_value)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-base font-extrabold text-agua-700">{money(r.amount)}</p>
+                        {r.pending > 0 && <p className="text-[11px] font-semibold text-amber-700">{r.pending} sin pago definido</p>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
 
           <div className={`card min-h-0 flex-1 flex-col overflow-hidden ${show("pedidos")}`}>

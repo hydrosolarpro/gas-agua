@@ -5,12 +5,15 @@ import { useState } from "react";
 import { Copy, MessageCircle } from "lucide-react";
 import { LocationPicker, type PickedLocation } from "@/components/LocationPicker";
 import { PhoneInput } from "@/components/PinInput";
+import { LogoUploader } from "@/components/LogoUploader";
+import { HoursEditor } from "@/components/HoursEditor";
+import { cleanHours, DAY_KEYS, type OpeningHours } from "@/lib/hours";
 import { ErrorText, Spinner } from "@/components/ui";
 import { errorMessage } from "@/lib/format";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { usePanel } from "@/components/panel-context";
 
-type Tab = "datos" | "pagos" | "ubicacion" | "enlace";
+type Tab = "datos" | "horario" | "pagos" | "ubicacion" | "enlace";
 
 export default function NegocioPage() {
   const { business, reload } = usePanel();
@@ -26,6 +29,7 @@ export default function NegocioPage() {
     address: business.address_text ?? "",
     reference: "",
   });
+  const [hours, setHours] = useState<OpeningHours>(business.opening_hours ?? {});
   const [tab, setTab] = useState<Tab>("datos");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -37,6 +41,7 @@ export default function NegocioPage() {
   async function save() {
     if (name.trim().length < 2) return setError("Escribe el nombre del negocio");
     if (Boolean(otherName.trim()) !== Boolean(otherValue.trim())) return setError("Completa el nombre y el dato de la otra plataforma de pago, o deja ambos vacíos");
+    if (DAY_KEYS.some((k) => hours[k] && hours[k]!.abre >= hours[k]!.cierra)) return setError("Revisa el horario: la hora de cierre debe ser después de la de apertura");
     setSaving(true);
     setError("");
     setMsg("");
@@ -53,6 +58,7 @@ export default function NegocioPage() {
         address_text: loc.address || null,
         lat: loc.point?.lat ?? null,
         lng: loc.point?.lng ?? null,
+        opening_hours: cleanHours(hours),
       })
       .eq("id", business.id);
     setSaving(false);
@@ -63,6 +69,7 @@ export default function NegocioPage() {
 
   const TABS: { id: Tab; label: string }[] = [
     { id: "datos", label: "Datos" },
+    { id: "horario", label: "Horario" },
     { id: "pagos", label: "Pagos" },
     { id: "ubicacion", label: "Ubicación" },
     { id: "enlace", label: "Enlace" },
@@ -73,7 +80,7 @@ export default function NegocioPage() {
   return (
     <main className="mx-auto flex h-full max-w-3xl flex-col gap-3 p-3 md:p-5">
       <div className="flex shrink-0 items-center justify-between gap-2">
-        <h1 className="text-xl font-extrabold md:text-2xl">Mi negocio</h1>
+        <h1 className="text-xl font-extrabold md:text-2xl">Datos de mi Negocio</h1>
         <div className="flex items-center gap-2">
           <Link href="/panel/suscripcion" className="btn-outline !px-3 !py-2 text-sm">
             Mi plan
@@ -100,6 +107,7 @@ export default function NegocioPage() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         <section className={`card space-y-4 p-4 md:p-5 ${pane("datos")}`}>
           <h2 className="font-bold">Datos del negocio</h2>
+          <LogoUploader business={business} onChanged={reload} />
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="label">Nombre</label>
@@ -110,6 +118,12 @@ export default function NegocioPage() {
               <PhoneInput value={phone} onChange={setPhone} />
             </div>
           </div>
+        </section>
+
+        <section className={`card space-y-3 p-4 md:p-5 ${pane("horario")}`}>
+          <h2 className="font-bold">Horario de atención</h2>
+          <p className="text-sm text-slate-600">Tus clientes y repartidores verán si estás abierto o cerrado. Un día apagado se muestra como cerrado.</p>
+          <HoursEditor value={hours} onChange={setHours} />
         </section>
 
         <section className={`card space-y-3 p-4 md:p-5 ${pane("pagos")}`}>

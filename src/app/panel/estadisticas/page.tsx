@@ -2,12 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { Download, FileText } from "lucide-react";
+import type { Order } from "@/lib/types";
 import { usePanel } from "@/components/panel-context";
+import { useDrivers } from "@/components/useBusinessOrders";
 import { Empty, ErrorText, Spinner } from "@/components/ui";
 import { dateTime, money } from "@/lib/format";
-import { limaDate } from "@/lib/plan";
+import { dayRows as buildDays, payRows as buildPays, round2, type Earn } from "@/lib/earnings";
+import { FINANCE_COLS, orderFinance, orderPay } from "@/lib/finance";
+import { payLabel } from "@/lib/pay";
+import { fmtDay, limaDate } from "@/lib/plan";
 import { RANGE_MODES, rangeBounds, resolveRange, type Range, type RangeMode } from "@/lib/stats";
-import { downloadStatsPdf, type CancelledRow, type CustomerStat, type DeliveryRow, type Summary } from "@/lib/stats-pdf";
+import { downloadStatsPdf, type CancelledRow, type CustomerStat, type DayRow, type DeliveryRow, type PayRow, type Summary } from "@/lib/stats-pdf";
 import { clock, etaVerdict, fmtMin, minutesBetween, traceTimes } from "@/lib/trace";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -42,10 +47,11 @@ type DeliveredOrder = {
   payment_reported_at: string | null;
   payment_validated_at: string | null;
   delivered_at: string | null;
+  driver_id: string | null;
   driver: { full_name: string } | null;
-};
+} & Pick<Order, "order_finance" | "order_driver_pay">;
 
-type Report = { range: Range; summary: Summary; cancelled: CancelledRow[]; customers: CustomerStat[]; deliveries: DeliveryRow[] };
+type Report = { range: Range; summary: Summary; cancelled: CancelledRow[]; customers: CustomerStat[]; deliveries: DeliveryRow[]; days: DayRow[]; pays: PayRow[] };
 
 /** Trae todas las filas de una consulta paginando de a 1000 (límite del servidor). */
 async function all<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
@@ -60,12 +66,13 @@ async function all<T>(page: (from: number, to: number) => PromiseLike<{ data: T[
 
 export default function Estadisticas() {
   const { business } = usePanel();
+  const { drivers } = useDrivers(business.id);
   const today = limaDate();
   const [mode, setMode] = useState<RangeMode>("mes");
   const [a, setA] = useState(today.slice(0, 7));
   const [b, setB] = useState(today.slice(0, 7));
   const [report, setReport] = useState<Report | null>(null);
-  const [rtab, setRtab] = useState<"entregas" | "cancelados" | "clientes">("entregas");
+  const [rtab, setRtab] = useState<"entregas" | "ganancias" | "pagos" | "cancelados" | "clientes">("entregas");
   const [loading, setLoading] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [error, setError] = useState("");
@@ -126,21 +133,48 @@ export default function Estadisticas() {
             .range(f, t)
             .returns<Link[]>(),
         ),
-        all<DeliveredOrder>((f, t) =>
-          db
-            .from("orders")
-            .select("code, customer_name, total, created_at, accepted_at, picked_at, eta_minutes, arrived_at, payment_reported_at, payment_validated_at, delivered_at, driver:profiles!orders_driver_id_fkey(full_name)")
-            .eq("business_id", business.id)
-            .eq("status", "entregado")
-            .gte("delivered_at", since)
-            .lt("delivered_at", until)
-            .order("delivered_at", { ascending: false })
-            .range(f, t)
-            .returns<DeliveredOrder[]>(),
-        ),
+        all<DeliveredOrder>((f, t) => {
+          const q = (cols: string) =>
+            db
+              .from("orders")
+              .select(cols)
+              .eq("business_id", business.id)
+              .eq("status", "entregado")
+              .gte("delivered_at", since)
+              .lt("delivered_at", until)
+              .order("delivered_at", { ascending: false })
+              .range(f, t)
+              .returns<DeliveredOrder[]>();
+          const base = "code, customer_name, total, created_at, accepted_at, picked_at, eta_minutes, arrived_at, payment_reported_at, payment_validated_at, delivered_at, driver_id, driver:profiles!orders_driver_id_fkey(full_name)";
+          // Si las tablas de ganancias aún no existen, se muestran las entregas sin ellas.
+          return q(`${base}, ${FINANCE_COLS}`).then((r) => (r.error ? q(base) : r));
+        }),
       ]);
 
-      const deliveries: DeliveryRow[] = deliveredOrders.map((o) => ({
+      const earns: Earn[] = deliveredOrders.map((o) => {
+        const f = orderFinance(o);
+        const p = orderPay(o);
+        const d = drivers.find((x) => x.user_id === o.driver_id);
+        return {
+          day: limaDate(o.delivered_at ?? o.created_at),
+          total: Number(o.total),
+          driverKey: o.driver_id ?? "-",
+          driverName: o.driver?.full_name ?? "—",
+          scheme: payLabel(d?.pay_type, d?.pay_value),
+          gross: f?.gross_profit == null ? null : Number(f.gross_profit),
+          net: f?.net_profit == null ? null : Number(f.net_profit),
+          pay: p?.amount == null ? null : Number(p.amount),
+        };
+      });
+      const days = buildDays(earns);
+      const pays = buildPays(earns);
+      const withCost = earns.filter((e) => e.gross !== null);
+
+      const deliveries: DeliveryRow[] = deliveredOrders.map((o, i) => ({
+        gross: earns[i].gross,
+        net: earns[i].net,
+        pay: earns[i].pay,
+        km: orderPay(o)?.distance_km == null ? null : Number(orderPay(o)!.distance_km),
         code: o.code,
         customer: o.customer_name || "Cliente",
         driver: o.driver?.full_name ?? "—",
@@ -205,8 +239,11 @@ export default function Estadisticas() {
         validated: orders.filter((o) => o.payment_status === "validado").reduce((s, o) => s + Number(o.total), 0),
         newCustomers: links.filter((l) => joinedIn(l.created_at)).length,
         activeCustomers: perCustomer.size,
+        gross: withCost.length ? round2(withCost.reduce((a, e) => a + (e.gross ?? 0), 0)) : null,
+        net: withCost.length ? round2(withCost.reduce((a, e) => a + (e.net ?? 0), 0)) : null,
+        driverPay: round2(earns.reduce((a, e) => a + (e.pay ?? 0), 0)),
       };
-      setReport({ range: r, summary, cancelled, customers, deliveries });
+      setReport({ range: r, summary, cancelled, customers, deliveries, days, pays });
     } catch (e) {
       setError((e as Error).message || "No se pudieron cargar las estadísticas");
     }
@@ -221,7 +258,7 @@ export default function Estadisticas() {
     if (!report) return;
     setPdfBusy(true);
     try {
-      await downloadStatsPdf({ business: business.name, rangeLabel: report.range.label, summary: report.summary, cancelled: report.cancelled, customers: report.customers, deliveries: report.deliveries });
+      await downloadStatsPdf({ business: business.name, rangeLabel: report.range.label, summary: report.summary, cancelled: report.cancelled, customers: report.customers, deliveries: report.deliveries, payRows: report.pays, dayRows: report.days });
     } catch {
       setError("No se pudo generar el PDF");
     }
@@ -252,7 +289,7 @@ export default function Estadisticas() {
   return (
     <main className="mx-auto flex h-full max-w-6xl flex-col gap-3 p-3 md:p-5 lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
       <div className="shrink-0 lg:col-span-2">
-        <h1 className="text-xl font-extrabold md:text-2xl">Estadísticas del negocio</h1>
+        <h1 className="text-xl font-extrabold md:text-2xl">Mis Estadísticas</h1>
       </div>
 
       <section className="card shrink-0 space-y-3 p-3 md:p-4 lg:self-start">
@@ -304,6 +341,9 @@ export default function Estadisticas() {
                 ["Tiempo medio", fmtMin(report.summary.avgDeliveryMin), "text-indigo-600"],
                 ["Cancelados", String(report.summary.cancelled), "text-rose-600"],
                 ["Ventas validadas", money(report.summary.validated), "text-agua-700"],
+                ["Ganancia bruta", report.summary.gross == null ? "—" : money(report.summary.gross), "text-emerald-700"],
+                ["Ganancia neta", report.summary.net == null ? "—" : money(report.summary.net), "text-emerald-700"],
+                ["A pagar a repartidores", money(report.summary.driverPay ?? 0), "text-agua-700"],
                 ["No concretado", money(report.summary.cancelledAmount), "text-rose-600"],
                 ["Clientes nuevos", String(report.summary.newCustomers), "text-ink"],
                 ["Con pedidos", String(report.summary.activeCustomers), "text-ink"],
@@ -318,6 +358,8 @@ export default function Estadisticas() {
             <div className="flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
               {[
                 { id: "entregas" as const, label: `Entregas (${report.deliveries.length})` },
+                { id: "ganancias" as const, label: "Ganancias" },
+                { id: "pagos" as const, label: "Pagos" },
                 { id: "cancelados" as const, label: `Cancelados (${report.cancelled.length})` },
                 { id: "clientes" as const, label: `Clientes (${report.customers.length})` },
               ].map((t) => (
@@ -347,6 +389,11 @@ export default function Estadisticas() {
                         <p className="shrink-0 font-extrabold text-emerald-700">{fmtMin(t.total)}</p>
                       </div>
                       <p className="truncate text-sm text-slate-500">Repartidor: {d.driver} · {money(d.total)}</p>
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div className="rounded-xl bg-emerald-50 p-1.5"><p className="text-slate-500">Ganancia bruta</p><p className="font-extrabold text-emerald-700">{d.gross == null ? "—" : money(d.gross)}</p></div>
+                        <div className="rounded-xl bg-emerald-50 p-1.5"><p className="text-slate-500">Ganancia neta</p><p className="font-extrabold text-emerald-700">{d.net == null ? "—" : money(d.net)}</p></div>
+                        <div className="rounded-xl bg-agua-50 p-1.5"><p className="text-slate-500">Pago repartidor{d.km ? ` · ${d.km} km` : ""}</p><p className="font-extrabold text-agua-700">{d.pay == null ? "—" : money(d.pay)}</p></div>
+                      </div>
                       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-xl bg-slate-50 p-2.5 text-xs sm:grid-cols-3">
                         {[
                           ["Recibido", clock(d.created_at)],
@@ -369,6 +416,36 @@ export default function Estadisticas() {
                     </article>
                   );
                 })}
+              {rtab === "ganancias" && report.days.length === 0 && <Empty icon={<FileText className="h-10 w-10 text-slate-300" />} title="Sin entregas en este período" />}
+              {rtab === "ganancias" && report.days.length > 0 && report.summary.gross === null && (
+                <p className="rounded-2xl bg-amber-50 p-3 text-sm font-medium text-amber-800">Registra el costo de tus productos en «Mis productos» para ver tu ganancia bruta y neta.</p>
+              )}
+              {rtab === "ganancias" &&
+                report.days.map((r) => (
+                  <article key={r.day} className="card space-y-2 p-3">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="font-bold">{fmtDay(r.day)}</p>
+                      <p className="text-sm text-slate-500">{r.deliveries} {r.deliveries === 1 ? "entrega" : "entregas"} · {money(r.sales)}</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div className="rounded-xl bg-emerald-50 p-1.5"><p className="text-slate-500">Ganancia bruta</p><p className="font-extrabold text-emerald-700">{r.gross === null ? "—" : money(r.gross)}</p></div>
+                      <div className="rounded-xl bg-agua-50 p-1.5"><p className="text-slate-500">Pago a repartidores</p><p className="font-extrabold text-agua-700">{money(r.pay)}</p></div>
+                      <div className="rounded-xl bg-emerald-50 p-1.5"><p className="text-slate-500">Ganancia neta</p><p className="font-extrabold text-emerald-700">{r.net === null ? "—" : money(r.net)}</p></div>
+                    </div>
+                  </article>
+                ))}
+              {rtab === "pagos" && report.pays.length === 0 && <Empty icon={<FileText className="h-10 w-10 text-slate-300" />} title="Sin entregas en este período" />}
+              {rtab === "pagos" &&
+                report.pays.map((r) => (
+                  <article key={r.driver + r.scheme} className="card flex items-center justify-between gap-3 p-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold">{r.driver}</p>
+                      <p className="text-sm text-slate-500">{r.deliveries} {r.deliveries === 1 ? "entrega" : "entregas"} · {money(r.total)} · {r.scheme}</p>
+                      {r.pending > 0 && <p className="text-xs font-semibold text-amber-700">{r.pending} pedido(s) sin pago definido: define su pago en «Mi equipo»</p>}
+                    </div>
+                    <p className="shrink-0 text-right text-xl font-extrabold text-agua-700">{money(r.amount)}<span className="block text-[11px] font-semibold text-slate-500">a pagar</span></p>
+                  </article>
+                ))}
               {rtab === "cancelados" && report.cancelled.length === 0 && <Empty icon={<FileText className="h-10 w-10 text-slate-300" />} title="Sin pedidos cancelados en este período" />}
               {rtab === "cancelados" &&
                 report.cancelled.map((c) => (

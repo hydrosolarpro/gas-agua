@@ -2,14 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { UserX } from "lucide-react";
+import { AlertTriangle, UserX } from "lucide-react";
 import { PinInput } from "@/components/PinInput";
 import { ErrorText, Sheet, Spinner } from "@/components/ui";
 
-/** Botón visible para que el cliente se dé de baja con su PIN. */
+/** Botón visible para que el cliente se dé de baja: primero se explica, luego reconfirma con su PIN. */
 export function BajaButton({ className = "" }: { className?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -36,6 +37,7 @@ export function BajaButton({ className = "" }: { className?: string }) {
         onClick={() => {
           setError("");
           setPin("");
+          setStep(1);
           setOpen(true);
         }}
         className={`flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-rose-200 bg-white px-4 py-3 font-bold text-rose-600 active:scale-[0.99] ${className}`}
@@ -44,24 +46,38 @@ export function BajaButton({ className = "" }: { className?: string }) {
       </button>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="Darme de baja">
-        <div className="space-y-4">
-          <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-600">
-            <li>Cerraremos tu cuenta y borraremos tu celular y tu dirección.</li>
-            <li>Ya no podrás entrar ni hacer pedidos con esta cuenta.</li>
-            <li>Los negocios guardan el historial de tus pedidos anteriores.</li>
-            <li>Si quieres volver, puedes registrarte de nuevo con tu celular.</li>
-          </ul>
-          <PinInput value={pin} onChange={setPin} onComplete={submit} label="Escribe tu PIN para confirmar" />
-          {busy && (
-            <p className="flex items-center justify-center gap-2 text-sm text-slate-500">
-              <Spinner className="h-4 w-4" /> Cerrando tu cuenta…
+        {step === 1 ? (
+          <div className="space-y-4">
+            <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-600">
+              <li>Cerraremos tu cuenta y borraremos tu celular y tu dirección.</li>
+              <li>Ya no podrás entrar ni hacer pedidos con esta cuenta.</li>
+              <li>Los negocios guardan el historial de tus pedidos anteriores.</li>
+              <li>Si quieres volver, puedes registrarte de nuevo con tu celular.</li>
+            </ul>
+            <button onClick={() => setStep(2)} className="cta cta-danger">
+              <UserX className="h-6 w-6" /> Sí, quiero darme de baja
+            </button>
+            <button onClick={() => setOpen(false)} className="cta cta-outline">
+              Mejor no, quedarme
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="flex items-start gap-2 rounded-2xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /> Última confirmación: al escribir tu PIN tu cuenta se cierra y no se puede deshacer.
             </p>
-          )}
-          <ErrorText>{error}</ErrorText>
-          <button onClick={() => setOpen(false)} className="btn-outline w-full">
-            Mejor no
-          </button>
-        </div>
+            <PinInput value={pin} onChange={setPin} onComplete={submit} label="Escribe tu PIN para confirmar la baja" />
+            {busy && (
+              <p className="flex items-center justify-center gap-2 text-sm text-slate-500">
+                <Spinner className="h-4 w-4" /> Cerrando tu cuenta…
+              </p>
+            )}
+            <ErrorText>{error}</ErrorText>
+            <button onClick={() => { setPin(""); setError(""); setStep(1); }} disabled={busy} className="cta cta-outline">
+              Volver
+            </button>
+          </div>
+        )}
       </Sheet>
     </>
   );

@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, MessageCircle, Plus, Trash2 } from "lucide-react";
+import { KeyRound, MessageCircle, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { Bike, Phone } from "@/components/icons";
 import { PhoneInput } from "@/components/PinInput";
 import { usePanel } from "@/components/panel-context";
 import { Empty, ErrorText, Sheet, Spinner } from "@/components/ui";
 import { useDrivers, type Driver } from "@/components/useBusinessOrders";
+import { PayPicker } from "@/components/PayPicker";
 import { waLink } from "@/lib/format";
+import { checkPay, payLabel, type PayType } from "@/lib/pay";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 async function api(method: string, body: Record<string, unknown>) {
@@ -22,15 +24,20 @@ export default function RepartidoresPage() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [payType, setPayType] = useState<PayType | "">("");
+  const [payValue, setPayValue] = useState("");
+  const [editing, setEditing] = useState<Driver | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
   async function add() {
+    const c = checkPay(payType, payValue);
+    if (!c.ok) return setError(c.error);
     setSaving(true);
     setError("");
-    const { ok, data } = await api("POST", { fullName: name, phone });
+    const { ok, data } = await api("POST", { fullName: name, phone, payType: c.type, payValue: c.value });
     setSaving(false);
     if (!ok) return setError(data.error ?? "No se pudo agregar");
     setOpen(false);
@@ -41,7 +48,33 @@ export default function RepartidoresPage() {
     );
     setName("");
     setPhone("");
+    setPayType("");
+    setPayValue("");
     reload();
+  }
+
+  async function savePay() {
+    if (!editing) return;
+    const c = checkPay(payType, payValue);
+    if (!c.ok) return setError(c.error);
+    setSaving(true);
+    setError("");
+    const { data, error } = await supabaseBrowser().rpc("set_driver_pay", { p_user_id: editing.user_id, p_type: c.type, p_value: c.value });
+    setSaving(false);
+    if (error) return setError(error.message);
+    setNotice(
+      `Pago de ${editing.profiles.full_name}: ${payLabel(c.type, c.value)}.` +
+        (Number(data) > 0 ? ` Se aplicó a ${data} pedido${Number(data) === 1 ? "" : "s"} ya entregado${Number(data) === 1 ? "" : "s"}.` : ""),
+    );
+    setEditing(null);
+    reload();
+  }
+
+  function openPay(d: Driver) {
+    setError("");
+    setPayType(d.pay_type ?? "");
+    setPayValue(d.pay_value === null || d.pay_value === undefined ? "" : String(Number(d.pay_value)));
+    setEditing(d);
   }
 
   async function act(d: Driver, method: "PATCH" | "DELETE", confirmText?: string) {
@@ -86,6 +119,8 @@ export default function RepartidoresPage() {
         <button
           onClick={() => {
             setError("");
+            setPayType("");
+            setPayValue("");
             setOpen(true);
           }}
           className="btn-primary px-4 py-2.5 text-sm"
@@ -143,6 +178,18 @@ export default function RepartidoresPage() {
                 )}
               </div>
 
+              <button
+                onClick={() => openPay(d)}
+                className={`flex w-full items-center gap-3 rounded-2xl border-2 px-3 py-2.5 text-left transition active:scale-[0.99] ${d.pay_type ? "border-agua-200 bg-agua-50" : "border-amber-300 bg-amber-50"}`}
+              >
+                <Wallet className={`h-6 w-6 shrink-0 ${d.pay_type ? "text-agua-700" : "text-amber-700"}`} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-semibold text-slate-500">Cómo le pagas</span>
+                  <span className={`block font-bold ${d.pay_type ? "text-agua-800" : "text-amber-800"}`}>{d.pay_type ? payLabel(d.pay_type, d.pay_value) : "Definir pago"}</span>
+                </span>
+                <Pencil className="h-4 w-4 shrink-0 text-slate-400" />
+              </button>
+
               <div className="flex flex-wrap gap-2">
                 {sinPin && d.profiles.phone && (
                   <a href={accessLink(d)} target="_blank" className="btn-success px-4 py-2 text-sm">
@@ -187,12 +234,29 @@ export default function RepartidoresPage() {
             <label className="label">Celular</label>
             <PhoneInput value={phone} onChange={setPhone} />
           </div>
+          <div>
+            <p className="label">¿Cómo le vas a pagar por cada pedido entregado?</p>
+            <PayPicker type={payType} value={payValue} onType={setPayType} onValue={setPayValue} />
+          </div>
           <p className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
             No necesitas darle un PIN: lo crea él al entrar por primera vez. Si ese celular ya tiene cuenta, le llegará una invitación que debe aceptar.
           </p>
           <ErrorText>{error}</ErrorText>
           <button onClick={add} disabled={saving} className="btn-primary w-full">
             {saving && <Spinner className="h-5 w-5" />} Registrar repartidor
+          </button>
+        </div>
+      </Sheet>
+
+      <Sheet open={Boolean(editing)} onClose={() => setEditing(null)} title={`Pago de ${editing?.profiles.full_name ?? ""}`}>
+        <div className="space-y-4">
+          <PayPicker type={payType} value={payValue} onType={setPayType} onValue={setPayValue} />
+          <p className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
+            Se aplica a los próximos pedidos y también a los que ya entregó y todavía no tenían pago asignado. Los pedidos que ya tienen pago no cambian.
+          </p>
+          <ErrorText>{error}</ErrorText>
+          <button onClick={savePay} disabled={saving} className="cta cta-primary">
+            {saving && <Spinner className="h-5 w-5" />} Guardar pago
           </button>
         </div>
       </Sheet>

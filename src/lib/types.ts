@@ -69,6 +69,10 @@ export type Business = {
   lat: number | null;
   lng: number | null;
   active: boolean;
+  /** Logo público del negocio (bucket `logos`). */
+  logo_url?: string | null;
+  /** Horario de atención por día: { lun: { abre: "08:00", cierra: "20:00" }, … }. Un día ausente = cerrado. */
+  opening_hours?: import("./hours").OpeningHours | null;
 };
 
 export type Product = {
@@ -128,7 +132,14 @@ export type Order = {
   arrived_at: string | null;
   payment_validated_at: string | null;
   order_items?: OrderItem[];
+  /** Solo lo ve el dueño del negocio (tabla privada order_finance). */
+  order_finance?: OrderFinance | OrderFinance[] | null;
+  /** Lo ven el dueño y el repartidor de ese pedido (tabla order_driver_pay). */
+  order_driver_pay?: OrderDriverPay | OrderDriverPay[] | null;
 };
+
+export type OrderFinance = { cost_total: number; gross_profit: number | null; net_profit: number | null };
+export type OrderDriverPay = { driver_id: string; pay_type: string | null; pay_value: number | null; distance_km: number | null; amount: number | null };
 
 export type DriverLocation = {
   driver_id: string;

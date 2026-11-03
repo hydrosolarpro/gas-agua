@@ -12,6 +12,7 @@ import { Empty, ErrorText, FullLoader, MethodBadge, PayBadge, Sheet, Spinner, St
 import { useBusinessOrders, useDrivers } from "@/components/useBusinessOrders";
 import { EtaCard, MapEta, etaLabel } from "@/components/Eta";
 import { Traza } from "@/components/Traza";
+import { orderFinance, orderPay } from "@/lib/finance";
 import { ACTIVE_STATUSES, dateTime, errorMessage, money, telLink, waLink } from "@/lib/format";
 import { useDriverLocation } from "@/lib/hooks";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -67,6 +68,14 @@ function OrderDetail({ order, onChanged }: { order: Order; onChanged: () => void
       </div>
 
       <EtaCard order={order} />
+
+      {order.status === "entregado" && (orderFinance(order) || orderPay(order)) && (
+        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+          <div className="rounded-2xl bg-emerald-50 p-2.5"><p className="text-slate-500">Ganancia bruta</p><p className="text-lg font-extrabold text-emerald-700">{orderFinance(order)?.gross_profit == null ? "—" : money(Number(orderFinance(order)!.gross_profit))}</p></div>
+          <div className="rounded-2xl bg-agua-50 p-2.5"><p className="text-slate-500">Pago repartidor{orderPay(order)?.distance_km ? ` · ${orderPay(order)!.distance_km} km` : ""}</p><p className="text-lg font-extrabold text-agua-700">{orderPay(order)?.amount == null ? "—" : money(Number(orderPay(order)!.amount))}</p></div>
+          <div className="rounded-2xl bg-emerald-50 p-2.5"><p className="text-slate-500">Ganancia neta</p><p className="text-lg font-extrabold text-emerald-700">{orderFinance(order)?.net_profit == null ? "—" : money(Number(orderFinance(order)!.net_profit))}</p></div>
+        </div>
+      )}
 
       {order.status !== "cancelado" && (order.status === "entregado" || order.payment_status === "reportado" || order.payment_status === "rechazado") && (
         <div className="rounded-2xl border-2 border-orange-200 bg-orange-50 p-4">
@@ -187,7 +196,7 @@ function Pedidos() {
 
   return (
     <main className="mx-auto flex h-full max-w-6xl flex-col gap-3 p-3 md:p-5">
-      <h1 className="shrink-0 text-xl font-extrabold md:text-2xl">Pedidos</h1>
+      <h1 className="shrink-0 text-xl font-extrabold md:text-2xl">Mis Pedidos</h1>
       <div className="flex shrink-0 gap-2 overflow-x-auto pb-1">
         {FILTERS.map((f) => (
           <button

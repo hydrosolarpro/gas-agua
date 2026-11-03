@@ -12,6 +12,7 @@ import { CATEGORY, errorMessage, METHOD, money, telLink } from "@/lib/format";
 import { useSession } from "@/lib/hooks";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Business, PaymentMethod, Product } from "@/lib/types";
+import { BusinessHeader, HoursList } from "@/components/BusinessBadge";
 
 type Step = "productos" | "ubicacion" | "pago";
 
@@ -185,6 +186,13 @@ export default function StorePage() {
       <main className="mx-auto min-h-0 w-full max-w-3xl flex-1 space-y-3 overflow-y-auto p-3 md:p-5">
         {step === "productos" && (
           <>
+            <BusinessHeader business={business} />
+            {business.opening_hours && (
+              <details className="rounded-2xl bg-white p-3 text-sm shadow-sm ring-1 ring-slate-200">
+                <summary className="cursor-pointer font-bold text-slate-700">Ver horario de atención</summary>
+                <div className="mt-2"><HoursList hours={business.opening_hours} /></div>
+              </details>
+            )}
             <section className="rounded-3xl bg-gradient-to-br from-agua-600 to-agua-500 p-4 text-white shadow-lg [@media(max-height:800px)]:hidden">
               <p className="text-sm opacity-90">Pide y paga al recibir</p>
               <p className="text-2xl font-extrabold">{business.name}</p>

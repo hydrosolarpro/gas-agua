@@ -1,6 +1,7 @@
 "use client";
 
-import { Bike, MapPin, Search, Store } from "@/components/icons";
+import { Bike, MapPin, Search } from "@/components/icons";
+import { BusinessLogo } from "@/components/BusinessBadge";
 
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -214,7 +215,7 @@ export default function SeguimientoPage() {
           <p className="text-sm text-slate-600"><MapPin className="mr-1 inline h-4 w-4 -mt-0.5 text-gas-600" />{order.address_text}{order.reference ? ` · ${order.reference}` : ""}</p>
           {business && (
             <p className="text-sm text-slate-600">
-              <Store className="mr-1 inline h-4 w-4 -mt-0.5" />{business.name}
+              <BusinessLogo business={business} size="sm" className="mr-2 inline-block !h-6 !w-6 !rounded-lg align-middle !text-xs" />{business.name}
               {business.phone && (
                 <a href={telLink(business.phone)} className="ml-2 font-semibold text-agua-700">Llamar</a>
               )}

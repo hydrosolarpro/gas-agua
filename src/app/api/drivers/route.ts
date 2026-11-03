@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
+import { checkPay } from "@/lib/pay";
 import { createPendingDriver, PHONE_RE, randomPassword, SETUP_HOURS } from "@/lib/pin";
 
 /** Devuelve el negocio del dueño que llama (comprobado en el servidor con su sesión). */
@@ -17,13 +18,22 @@ async function ownerBusiness() {
 export async function POST(request: Request) {
   const guard = await ownerBusiness();
   if (guard.error) return guard.error;
-  const { fullName, phone } = (await request.json().catch(() => ({}))) as { fullName?: string; phone?: string };
+  const { fullName, phone, payType, payValue } = (await request.json().catch(() => ({}))) as { fullName?: string; phone?: string; payType?: string; payValue?: number | string };
 
   const name = fullName?.trim() ?? "";
   if (name.length < 2) return NextResponse.json({ error: "Escribe el nombre del repartidor" }, { status: 400 });
   if (!phone || !PHONE_RE.test(phone)) {
     return NextResponse.json({ error: "El celular debe tener 9 dígitos y empezar con 9" }, { status: 400 });
   }
+
+  // La forma de pago es opcional (por ejemplo, el dueño que reparte él mismo); si se envía, debe ser válida.
+  let pay: { type: string; value: number } | null = null;
+  if (payType || payValue) {
+    const c = checkPay(payType, payValue);
+    if (!c.ok) return NextResponse.json({ error: c.error }, { status: 400 });
+    pay = { type: c.type, value: c.value };
+  }
+  const payCols = pay ? { pay_type: pay.type, pay_value: pay.value } : {};
 
   const db = supabaseAdmin();
   const { data: existing } = await db.from("profiles").select("id, role, is_admin").eq("phone", phone).maybeSingle();
@@ -37,7 +47,7 @@ export async function POST(request: Request) {
     }
     const { error } = await db
       .from("business_members")
-      .upsert({ business_id: guard.businessId, user_id: userId, active: true, accepted: true });
+      .upsert({ business_id: guard.businessId, user_id: userId, active: true, accepted: true, ...payCols });
     if (error) {
       await db.auth.admin.deleteUser(userId);
       return NextResponse.json({ error: "No se pudo agregar al repartidor" }, { status: 500 });
@@ -59,7 +69,7 @@ export async function POST(request: Request) {
   const propio = existing.id === guard.ownerId;
   const { error } = await db
     .from("business_members")
-    .insert({ business_id: guard.businessId, user_id: existing.id, active: propio, accepted: propio });
+    .insert({ business_id: guard.businessId, user_id: existing.id, active: propio, accepted: propio, ...payCols });
   if (error) return NextResponse.json({ error: "No se pudo enviar la invitación" }, { status: 500 });
   return NextResponse.json({ ok: true, estado: propio ? "nuevo" : "invitado" });
 }

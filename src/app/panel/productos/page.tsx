@@ -10,13 +10,14 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Category, Product } from "@/lib/types";
 import { usePanel } from "@/components/panel-context";
 
-type Draft = { id?: string; name: string; description: string; category: Category; price: string; stock: string };
-const EMPTY: Draft = { name: "", description: "", category: "gas", price: "", stock: "" };
+type Draft = { id?: string; name: string; description: string; category: Category; price: string; stock: string; cost: string };
+const EMPTY: Draft = { name: "", description: "", category: "gas", price: "", stock: "", cost: "" };
 const LOW_STOCK = 3;
 
 export default function ProductosPage() {
   const { business } = usePanel();
   const [products, setProducts] = useState<Product[] | null>(null);
+  const [costs, setCosts] = useState<Record<string, number>>({});
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -24,6 +25,8 @@ export default function ProductosPage() {
   const load = useCallback(async () => {
     const { data } = await supabaseBrowser().from("products").select("*").eq("business_id", business.id).order("sort_order").order("created_at").returns<Product[]>();
     setProducts(data ?? []);
+    const { data: c } = await supabaseBrowser().from("product_costs").select("product_id, cost").eq("business_id", business.id).returns<{ product_id: string; cost: number }[]>();
+    setCosts(Object.fromEntries((c ?? []).map((x) => [x.product_id, Number(x.cost)])));
   }, [business.id]);
 
   useEffect(() => {
@@ -40,13 +43,21 @@ export default function ProductosPage() {
     if (!(price >= 0) || draft.price === "") return setError("Escribe un precio válido");
     const stock = draft.stock.trim() === "" ? null : Math.floor(Number(draft.stock));
     if (stock !== null && !(stock >= 0)) return setError("El stock debe ser 0 o más (déjalo vacío si no lo controlas)");
+    const cost = draft.cost.trim() === "" ? null : Number(draft.cost);
+    if (cost !== null && !(cost >= 0 && cost <= 100000)) return setError("Escribe un costo válido (déjalo vacío si no quieres registrarlo)");
     setSaving(true);
     setError("");
     const row = { name: draft.name.trim(), description: draft.description.trim() || null, category: draft.category, price, stock };
     const supabase = supabaseBrowser();
-    const { error } = draft.id
-      ? await supabase.from("products").update(row).eq("id", draft.id)
-      : await supabase.from("products").insert({ ...row, business_id: business.id, sort_order: (products?.length ?? 0) + 1 });
+    let productId = draft.id;
+    let error;
+    if (draft.id) ({ error } = await supabase.from("products").update(row).eq("id", draft.id));
+    else {
+      const res = await supabase.from("products").insert({ ...row, business_id: business.id, sort_order: (products?.length ?? 0) + 1 }).select("id").single();
+      error = res.error;
+      productId = res.data?.id;
+    }
+    if (!error && productId) ({ error } = await supabase.rpc("set_product_cost", { p_product_id: productId, p_cost: cost }));
     setSaving(false);
     if (error) return setError(errorMessage(error));
     setDraft(null);
@@ -77,7 +88,7 @@ export default function ProductosPage() {
   return (
     <main className="mx-auto max-w-6xl space-y-3 p-3 md:p-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-extrabold md:text-2xl">Productos, precios y stock</h1>
+        <h1 className="text-xl font-extrabold md:text-2xl">Mis productos</h1>
         <button onClick={() => { setError(""); setDraft(EMPTY); }} className="btn-primary px-4 py-2.5 text-sm">
           <Plus className="h-4 w-4" /> Nuevo
         </button>
@@ -92,6 +103,13 @@ export default function ProductosPage() {
             <div className="min-w-0 flex-1">
               <p className="truncate font-bold">{p.name}</p>
               <p className="font-extrabold text-agua-700">{money(p.price)}</p>
+              {costs[p.id] !== undefined ? (
+                <p className="text-xs font-semibold text-slate-500">
+                  Costo {money(costs[p.id])} · ganas <span className={p.price - costs[p.id] >= 0 ? "text-emerald-700" : "text-rose-600"}>{money(p.price - costs[p.id])}</span> por unidad
+                </p>
+              ) : (
+                <p className="text-xs font-semibold text-amber-700">Sin costo: no se calcula tu ganancia</p>
+              )}
             </div>
             <div className="flex w-full items-center gap-2 rounded-2xl bg-slate-50 p-2">
               {p.stock === null ? (
@@ -121,7 +139,7 @@ export default function ProductosPage() {
             <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
               <input type="checkbox" checked={p.active} onChange={() => toggle(p)} className="h-5 w-5 accent-teal-600" /> Activo
             </label>
-            <button onClick={() => { setError(""); setDraft({ id: p.id, name: p.name, description: p.description ?? "", category: p.category, price: String(p.price), stock: p.stock === null ? "" : String(p.stock) }); }} className="rounded-full bg-slate-100 p-2" aria-label="Editar">
+            <button onClick={() => { setError(""); setDraft({ id: p.id, name: p.name, description: p.description ?? "", category: p.category, price: String(p.price), stock: p.stock === null ? "" : String(p.stock), cost: costs[p.id] === undefined ? "" : String(costs[p.id]) }); }} className="rounded-full bg-slate-100 p-2" aria-label="Editar">
               <Pencil className="h-4 w-4" />
             </button>
             <button onClick={() => remove(p)} className="rounded-full bg-rose-50 p-2 text-rose-600" aria-label="Eliminar">
@@ -157,6 +175,11 @@ export default function ProductosPage() {
               <label className="label">Stock disponible (opcional)</label>
               <input className="input" inputMode="numeric" value={draft.stock} onChange={(e) => setDraft({ ...draft, stock: e.target.value.replace(/\D/g, "") })} placeholder="Vacío = no controlar" />
               <p className="mt-1 text-xs text-slate-500">Cuántas unidades tienes hoy. Se descuenta con cada pedido y vuelve si lo cancelan.</p>
+            </div>
+            <div>
+              <label className="label">¿Cuánto te cuesta? (S/, opcional)</label>
+              <input className="input" inputMode="decimal" value={draft.cost} onChange={(e) => setDraft({ ...draft, cost: e.target.value.replace(/[^\d.]/g, "") })} placeholder="Ej. 32.00" />
+              <p className="mt-1 text-xs text-slate-500">Solo lo ves tú. Sirve para calcular tu ganancia bruta y neta en cada pedido.</p>
             </div>
             <ErrorText>{error}</ErrorText>
             <button onClick={save} disabled={saving} className="cta-primary">

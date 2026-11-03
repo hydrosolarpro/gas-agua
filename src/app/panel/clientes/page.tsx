@@ -105,7 +105,7 @@ export default function Clientes() {
   return (
     <main className="mx-auto max-w-6xl space-y-3 p-3 md:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold">Mis clientes</h1>
+        <h1 className="text-2xl font-extrabold">Mis Clientes</h1>
         <button onClick={() => setOpen(true)} className="btn-gas px-4 py-2.5 text-sm">
           <UserPlus className="h-4 w-4" /> Invitar clientes
         </button>

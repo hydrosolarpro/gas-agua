@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { FINANCE_COLS } from "@/lib/finance";
 import type { Order } from "@/lib/types";
 
 /** Pedidos del negocio (últimos `days` días) con actualización en vivo. */
@@ -10,14 +11,11 @@ export function useBusinessOrders(businessId: string, days = 14) {
 
   const load = useCallback(async () => {
     const since = new Date(Date.now() - days * 86400000).toISOString();
-    const { data } = await supabaseBrowser()
-      .from("orders")
-      .select("*, order_items(*)")
-      .eq("business_id", businessId)
-      .gte("created_at", since)
-      .order("created_at", { ascending: false })
-      .limit(300)
-      .returns<Order[]>();
+    const query = (cols: string) =>
+      supabaseBrowser().from("orders").select(cols).eq("business_id", businessId).gte("created_at", since).order("created_at", { ascending: false }).limit(300).returns<Order[]>();
+    // Si las tablas de ganancias aún no existen, el panel sigue funcionando sin ellas.
+    const full = await query(`*, order_items(*), ${FINANCE_COLS}`);
+    const { data } = full.error ? await query("*, order_items(*)") : full;
     setOrders(data ?? []);
   }, [businessId, days]);
 
@@ -40,17 +38,18 @@ export type Driver = {
   user_id: string;
   active: boolean;
   accepted: boolean;
+  pay_type: "porcentaje" | "fijo" | "distancia" | null;
+  pay_value: number | null;
   profiles: { full_name: string; phone: string | null; has_pin: boolean };
 };
 
 export function useDrivers(businessId: string) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const load = useCallback(async () => {
-    const { data } = await supabaseBrowser()
-      .from("business_members")
-      .select("user_id, active, accepted, profiles(full_name, phone, has_pin)")
-      .eq("business_id", businessId)
-      .returns<Driver[]>();
+    const query = (cols: string) => supabaseBrowser().from("business_members").select(cols).eq("business_id", businessId).returns<Driver[]>();
+    // Si las columnas de pago aún no existen en la base de datos, el equipo se sigue mostrando sin ellas.
+    const full = await query("user_id, active, accepted, pay_type, pay_value, profiles(full_name, phone, has_pin)");
+    const { data } = full.error ? await query("user_id, active, accepted, profiles(full_name, phone, has_pin)") : full;
     setDrivers(data ?? []);
   }, [businessId]);
   useEffect(() => {
