@@ -33,7 +33,11 @@ export default function Home() {
             </p>
             <div className="mt-[clamp(0.5rem,1.8dvh,1.75rem)]">
               <Link href="/ingresar?next=/cliente" className="btn-gas w-full !py-[clamp(0.6rem,1.8dvh,0.875rem)] sm:w-auto">
-                <Flame className="h-5 w-5" /> Pedir gas o agua
+                <Flame className="h-5 w-5 shrink-0" />
+                <span className="text-left leading-tight">
+                  <span className="block text-xs font-semibold opacity-90">Soy cliente</span>
+                  Pedir gas o agua
+                </span>
               </Link>
             </div>
             <div className="mt-[clamp(0.5rem,1.6dvh,1.5rem)] border-t border-slate-200 pt-[clamp(0.4rem,1.4dvh,1.25rem)]">
