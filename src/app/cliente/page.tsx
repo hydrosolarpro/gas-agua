@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserRound } from "lucide-react";
 import { ORDER_SELECT, OrderRow } from "@/components/orders";
-import { Empty, FullLoader, Logo } from "@/components/ui";
+import { Empty, FullLoader } from "@/components/ui";
 import { BajaButton } from "@/components/BajaButton";
 import { ACTIVE_STATUSES } from "@/lib/format";
 import { rememberRole, useSession } from "@/lib/hooks";
@@ -91,8 +91,7 @@ export default function ClientePage() {
   // Tres secciones cortas en vez de una página larga: cada una cabe en la pantalla.
   return (
     <div className="flex h-full flex-col">
-      <header className="flex shrink-0 items-center justify-between bg-white px-4 py-2 shadow-sm">
-        <Logo size="sm" />
+      <header className="flex shrink-0 items-center justify-end bg-white px-4 py-2 shadow-sm">
         <Link href="/cuenta" className="rounded-full bg-slate-100 p-2" aria-label="Mi cuenta">
           <UserRound className="h-5 w-5" />
         </Link>
@@ -145,7 +144,7 @@ export default function ClientePage() {
         )}
 
         <section className="space-y-3">
-          <h2 className="font-bold">{mine.length > 0 ? "Mis negocios" : "Negocios disponibles"}</h2>
+          {mine.length === 0 && others.length > 0 && <h2 className="font-bold">Negocios disponibles</h2>}
           {others.length === 0 && !favorite && (
             <Empty icon={<Store className="h-12 w-12 text-slate-300" />} title="Aún no hay negocios" text="Pide a tu distribuidor de confianza el enlace de su tienda en AguaGasExpress." />
           )}
