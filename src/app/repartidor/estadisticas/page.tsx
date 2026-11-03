@@ -172,10 +172,10 @@ export default function EstadisticasRepartidor() {
                 {pdfBusy ? <Spinner className="h-4 w-4" /> : <Download className="h-4 w-4" />} PDF
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="card p-3"><p className="text-xs font-semibold text-slate-500">Entregados</p><p className="text-2xl font-extrabold text-emerald-600">{report.rows.length}</p></div>
-              <div className="card p-3"><p className="text-xs font-semibold text-slate-500">Total pedidos</p><p className="text-xl font-extrabold text-ink">{money(report.total)}</p></div>
-              <div className="card border-2 !border-agua-300 bg-agua-50 p-3"><p className="text-xs font-semibold text-agua-800">Mi pago</p><p className="text-xl font-extrabold text-agua-700">{money(report.pay)}</p></div>
+            <div className="grid grid-cols-3 gap-1.5 text-center sm:gap-2">
+              <div className="card min-w-0 p-2 sm:p-3"><p className="text-[11px] font-semibold text-slate-500 sm:text-xs">Entregados</p><p className="text-lg font-extrabold text-emerald-600 sm:text-2xl">{report.rows.length}</p></div>
+              <div className="card min-w-0 p-2 sm:p-3"><p className="text-[11px] font-semibold text-slate-500 sm:text-xs">Total pedidos</p><p className="text-sm font-extrabold text-ink min-[360px]:text-base sm:text-xl">{money(report.total)}</p></div>
+              <div className="card min-w-0 border-2 !border-agua-300 bg-agua-50 p-2 sm:p-3"><p className="text-[11px] font-semibold text-agua-800 sm:text-xs">Mi pago</p><p className="text-sm font-extrabold text-agua-700 min-[360px]:text-base sm:text-xl">{money(report.pay)}</p></div>
             </div>
             {report.pending > 0 && <p className="rounded-2xl bg-amber-50 p-3 text-sm font-medium text-amber-800">{report.pending} pedido(s) aún sin pago definido: el dueño debe definir tu forma de pago.</p>}
             <div className="flex gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">

@@ -126,17 +126,19 @@ export default function RepartidorPage() {
       <main className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-3 p-3 md:p-5">
         <WelcomeClock name={profile.full_name.split(" ")[0] || "repartidor"} subtitle="Tus entregas de hoy" />
         <ErrorText>{error}</ErrorText>
-        <Link href="/repartidor/estadisticas" className="flex shrink-0 items-center gap-3 rounded-3xl bg-gradient-to-r from-agua-600 to-agua-500 p-3.5 text-white shadow-lg active:scale-[0.99]">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20"><Wallet className="h-7 w-7" /></span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-xs font-bold uppercase tracking-wide opacity-90">Hoy · {today ? today.n : "…"} {today?.n === 1 ? "entregado" : "entregados"}</span>
-            <span className="block text-2xl font-extrabold leading-tight">{today ? money(today.pay) : "…"} <span className="text-sm font-semibold opacity-90">mi pago</span></span>
-            <span className="block text-sm font-semibold opacity-90">
-              Total de pedidos {today ? money(today.total) : "…"}
-              {today && today.pending > 0 ? ` · ${today.pending} sin pago definido` : ""}
+        <Link href="/repartidor/estadisticas" className="flex shrink-0 flex-col gap-3 rounded-3xl bg-gradient-to-r from-agua-600 to-agua-500 p-3.5 text-white shadow-lg active:scale-[0.99] sm:flex-row sm:items-center">
+          <span className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20"><Wallet className="h-7 w-7" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-bold uppercase tracking-wide opacity-90">Hoy · {today ? today.n : "…"} {today?.n === 1 ? "entregado" : "entregados"}</span>
+              <span className="block text-2xl font-extrabold leading-tight">{today ? money(today.pay) : "…"} <span className="text-sm font-semibold opacity-90">mi pago</span></span>
+              <span className="block text-sm font-semibold opacity-90">
+                Total de pedidos {today ? money(today.total) : "…"}
+                {today && today.pending > 0 ? ` · ${today.pending} sin pago definido` : ""}
+              </span>
             </span>
           </span>
-          <span className="flex shrink-0 items-center gap-1 rounded-2xl bg-white/20 px-3 py-2 text-sm font-bold"><BarChart3 className="h-5 w-5" /> Mis estadísticas y pagos <ChevronRight className="h-4 w-4" /></span>
+          <span className="flex shrink-0 items-center justify-center gap-1.5 rounded-2xl bg-white/20 px-3 py-2.5 text-sm font-bold"><BarChart3 className="h-5 w-5" /> Mis estadísticas y pagos <ChevronRight className="h-4 w-4" /></span>
         </Link>
         {business.opening_hours && (
           <details className="shrink-0 rounded-2xl bg-white p-3 text-sm shadow-sm ring-1 ring-slate-200">

@@ -95,7 +95,7 @@ export default function CuentaPage() {
           <button onClick={logout} className="btn-outline w-full !py-2.5 text-rose-600">
             <LogOut className="h-5 w-5" /> Cerrar sesión
           </button>
-          {profile.role === "cliente" && !profile.is_admin && <BajaButton />}
+          {!profile.is_admin && (profile.role === "cliente" || profile.role === "dueno" || profile.role === "repartidor") && <BajaButton role={profile.role} />}
         </div>
       </main>
     </div>

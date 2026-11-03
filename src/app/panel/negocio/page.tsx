@@ -95,7 +95,7 @@ export default function NegocioPage() {
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 rounded-xl px-2 py-2 text-sm font-bold transition ${tab === t.id ? "bg-white text-agua-700 shadow-sm" : "text-slate-500"}`}
+            className={`min-w-0 flex-1 rounded-xl px-0.5 py-2 text-[11px] font-bold min-[360px]:px-1 min-[360px]:text-xs transition sm:px-2 sm:text-sm ${tab === t.id ? "bg-white text-agua-700 shadow-sm" : "text-slate-500"}`}
           >
             {t.label}
           </button>

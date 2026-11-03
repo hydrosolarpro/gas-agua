@@ -22,12 +22,15 @@ function Kpi({ label, value, sub, tone = "text-ink" }: { label: string; value: s
 }
 
 export default function AdminResumen() {
-  const { owners, payments, settings, reload, openInvite } = useAdmin();
+  const { owners: allOwners, payments, settings, reload, openInvite } = useAdmin();
   const [paying, setPaying] = useState<OwnerRow | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  if (!owners) return <FullLoader />;
+  if (!allOwners) return <FullLoader />;
+  // Los negocios dados de baja no cuentan como activos ni se cobran.
+  const owners = allOwners.filter((o) => !o.deactivated_at);
+  const bajas = allOwners.length - owners.length;
 
   const validated = payments.filter((p) => p.status === "validado");
   const total = validated.reduce((s, p) => s + Number(p.amount), 0);
@@ -59,7 +62,7 @@ export default function AdminResumen() {
       </div>
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="Dueños activos" value={String(owners.length)} sub={`${unpaid.length} por vencer o vencidos`} />
+        <Kpi label="Dueños activos" value={String(owners.length)} sub={`${unpaid.length} por vencer o vencidos${bajas ? ` · ${bajas} de baja` : ""}`} />
         <Kpi label="Cobrado este mes" value={money(thisMonth)} sub={`de ${money(expected)} esperados`} tone="text-agua-700" />
         <Kpi label="Total cobrado" value={money(total)} sub={`${validated.length} pagos validados`} tone="text-emerald-700" />
         <Kpi label="Por validar" value={money(pendingSum)} sub={`${pending.length} ${pending.length === 1 ? "pago" : "pagos"}`} tone="text-orange-600" />

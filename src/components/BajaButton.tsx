@@ -6,8 +6,31 @@ import { AlertTriangle, UserX } from "lucide-react";
 import { PinInput } from "@/components/PinInput";
 import { ErrorText, Sheet, Spinner } from "@/components/ui";
 
-/** Botón visible para que el cliente se dé de baja: primero se explica, luego reconfirma con su PIN. */
-export function BajaButton({ className = "" }: { className?: string }) {
+type BajaRole = "cliente" | "dueno" | "repartidor";
+
+const POINTS: Record<BajaRole, string[]> = {
+  cliente: [
+    "Cerraremos tu cuenta y borraremos tu celular y tu dirección.",
+    "Ya no podrás entrar ni hacer pedidos con esta cuenta.",
+    "Tu negocio conserva tu nombre y tus pedidos anteriores, marcados como «cliente dado de baja».",
+    "Si quieres volver, puedes registrarte de nuevo con tu celular.",
+  ],
+  dueno: [
+    "Cerraremos tu cuenta y tu negocio dejará de recibir pedidos.",
+    "Tus clientes ya no podrán pedirte y tus repartidores dejarán de repartir.",
+    "El administrador conserva el registro de tu negocio y tus pedidos, marcado como «dado de baja».",
+    "Debes terminar o cancelar los pedidos en curso antes de darte de baja.",
+  ],
+  repartidor: [
+    "Cerraremos tu cuenta y borraremos tu celular.",
+    "Ya no podrás entrar ni recibir pedidos con esta cuenta.",
+    "Tu negocio conserva tu nombre y tus entregas anteriores, marcados como «repartidor dado de baja».",
+    "Debes terminar tus entregas en curso antes de darte de baja.",
+  ],
+};
+
+/** Botón visible para darse de baja: primero se explica, luego se reconfirma con el PIN. Sirve para cliente, dueño y repartidor. */
+export function BajaButton({ className = "", role = "cliente" }: { className?: string; role?: BajaRole }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
@@ -49,10 +72,9 @@ export function BajaButton({ className = "" }: { className?: string }) {
         {step === 1 ? (
           <div className="space-y-4">
             <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-600">
-              <li>Cerraremos tu cuenta y borraremos tu celular y tu dirección.</li>
-              <li>Ya no podrás entrar ni hacer pedidos con esta cuenta.</li>
-              <li>Tu negocio conserva tu nombre y tus pedidos anteriores, marcados como «cliente dado de baja».</li>
-              <li>Si quieres volver, puedes registrarte de nuevo con tu celular.</li>
+              {POINTS[role].map((t) => (
+                <li key={t}>{t}</li>
+              ))}
             </ul>
             <button onClick={() => setStep(2)} className="cta cta-danger">
               <UserX className="h-6 w-6" /> Sí, quiero darme de baja

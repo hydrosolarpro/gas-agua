@@ -51,7 +51,7 @@ export type Driver = {
   accepted: boolean;
   pay_type: "porcentaje" | "fijo" | "distancia" | null;
   pay_value: number | null;
-  profiles: { full_name: string; phone: string | null; has_pin: boolean };
+  profiles: { full_name: string; phone: string | null; has_pin: boolean; deactivated_at?: string | null };
 };
 
 export function useDrivers(businessId: string) {
@@ -59,8 +59,10 @@ export function useDrivers(businessId: string) {
   const load = useCallback(async () => {
     const query = (cols: string) => supabaseBrowser().from("business_members").select(cols).eq("business_id", businessId).returns<Driver[]>();
     // Si las columnas de pago aún no existen en la base de datos, el equipo se sigue mostrando sin ellas.
-    const full = await query("user_id, active, accepted, pay_type, pay_value, profiles(full_name, phone, has_pin)");
-    const { data } = full.error ? await query("user_id, active, accepted, profiles(full_name, phone, has_pin)") : full;
+    let res = await query("user_id, active, accepted, pay_type, pay_value, profiles(full_name, phone, has_pin, deactivated_at)");
+    if (res.error) res = await query("user_id, active, accepted, pay_type, pay_value, profiles(full_name, phone, has_pin)");
+    if (res.error) res = await query("user_id, active, accepted, profiles(full_name, phone, has_pin)");
+    const { data } = res;
     setDrivers(data ?? []);
   }, [businessId]);
   useEffect(() => {

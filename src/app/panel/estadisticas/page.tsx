@@ -429,7 +429,7 @@ export default function Estadisticas() {
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
                       <div className="rounded-xl bg-emerald-50 p-1.5"><p className="text-slate-500">Ganancia bruta</p><p className="font-extrabold text-emerald-700">{r.gross === null ? "—" : money(r.gross)}</p></div>
-                      <div className="rounded-xl bg-agua-50 p-1.5"><p className="text-slate-500">Pago a repartidores</p><p className="font-extrabold text-agua-700">{money(r.pay)}</p></div>
+                      <div className="rounded-xl bg-agua-50 p-1.5"><p className="text-slate-500"><span className="sm:hidden">Pago rep.</span><span className="hidden sm:inline">Pago a repartidores</span></p><p className="font-extrabold text-agua-700">{money(r.pay)}</p></div>
                       <div className="rounded-xl bg-emerald-50 p-1.5"><p className="text-slate-500">Ganancia neta</p><p className="font-extrabold text-emerald-700">{r.net === null ? "—" : money(r.net)}</p></div>
                     </div>
                   </article>

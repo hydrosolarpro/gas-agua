@@ -24,7 +24,8 @@ const toForm = (s: PlatformSettings | null): Form => ({
 });
 
 export default function AdminCobros() {
-  const { settings, owners, reload } = useAdmin();
+  const { settings, owners: allOwners, reload } = useAdmin();
+  const owners = allOwners?.filter((o) => !o.deactivated_at) ?? null;
   const [form, setForm] = useState<Form | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");

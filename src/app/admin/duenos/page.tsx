@@ -60,9 +60,12 @@ export default function AdminDuenos() {
       <div className="grid items-start gap-3 lg:grid-cols-2">
         {list.map((o) => {
           const plan = ownerPlan(o, payments);
-          const st = planChip(plan);
+          const baja = Boolean(o.deactivated_at || o.owner?.deactivated_at);
+          const st = baja ? { label: "Dado de baja", tone: "bg-slate-200 text-slate-700" } : planChip(plan);
+          const ownerName = (o.owner?.full_name ?? "").replace(/ \(baja\)$/, "");
+          const ownerPhone = o.owner?.phone ?? o.owner?.deactivated_phone ?? null;
           return (
-            <article key={o.id} className="card space-y-3 p-4">
+            <article key={o.id} className={`card space-y-3 p-4 ${baja ? "bg-slate-50" : ""}`}>
               <div className="flex items-start gap-3">
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-agua-50 text-agua-700">
                   <Store className="h-6 w-6" />
@@ -70,10 +73,15 @@ export default function AdminDuenos() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-lg font-bold">{o.name}</p>
                   <p className="truncate text-sm text-slate-600">
-                    {o.owner?.full_name} · <Phone className="mr-0.5 inline h-3.5 w-3.5 -mt-0.5" />
-                    {o.owner?.phone}
+                    {ownerName} · <Phone className="mr-0.5 inline h-3.5 w-3.5 -mt-0.5" />
+                    {ownerPhone}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  {baja && (
+                    <p className="text-xs font-semibold text-rose-700">
+                      El dueño se dio de baja el {dateTime((o.deactivated_at ?? o.owner?.deactivated_at)!)}. El negocio quedó inactivo y su historial se conserva.
+                    </p>
+                  )}
+                  <p className={`text-xs text-slate-500 ${baja ? "hidden" : ""}`}>
                     {plan.phase === "demo" ? "Demo" : plan.phase === "pagado" ? "Plan pagado" : "Venció"} · {fmtDay(plan.phase === "vencido" ? plan.until : plan.from)} al {fmtDay(plan.phase === "pagado" ? plan.until : plan.phase === "vencido" ? plan.until : plan.to)}
                     {plan.pending && <span className="ml-1 font-semibold text-orange-700">· pago por validar</span>}
                   </p>
@@ -101,13 +109,17 @@ export default function AdminDuenos() {
               </dl>
 
               <div className="flex flex-wrap gap-2">
-                <button onClick={() => setPaying(o)} className="btn-primary px-4 py-2 text-sm">
-                  Registrar pago
-                </button>
-                <button onClick={() => setFee(o)} className="btn-outline px-4 py-2 text-sm">
-                  Cambiar monto
-                </button>
-                {o.owner?.phone && (
+                {!baja && (
+                  <>
+                    <button onClick={() => setPaying(o)} className="btn-primary px-4 py-2 text-sm">
+                      Registrar pago
+                    </button>
+                    <button onClick={() => setFee(o)} className="btn-outline px-4 py-2 text-sm">
+                      Cambiar monto
+                    </button>
+                  </>
+                )}
+                {!baja && o.owner?.phone && (
                   <a href={waLink(o.owner.phone, `Hola ${o.owner.full_name}, te escribimos de AguaGasExpress.`)} target="_blank" className="btn-outline px-4 py-2 text-sm text-emerald-700">
                     <MessageCircle className="h-4 w-4" /> WhatsApp
                   </a>

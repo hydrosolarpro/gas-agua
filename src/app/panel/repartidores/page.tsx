@@ -8,7 +8,7 @@ import { usePanel } from "@/components/panel-context";
 import { Empty, ErrorText, Sheet, Spinner } from "@/components/ui";
 import { useDrivers, type Driver } from "@/components/useBusinessOrders";
 import { PayPicker } from "@/components/PayPicker";
-import { waLink } from "@/lib/format";
+import { dateTime, waLink } from "@/lib/format";
 import { checkPay, payLabel, type PayType } from "@/lib/pay";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -151,7 +151,8 @@ export default function RepartidoresPage() {
         {drivers.map((d) => {
           const yo = d.user_id === profile.id;
           const pendiente = !d.accepted;
-          const sinPin = d.accepted && !d.profiles.has_pin;
+          const baja = Boolean(d.profiles.deactivated_at);
+          const sinPin = d.accepted && !d.profiles.has_pin && !baja;
           return (
             <article key={d.user_id} className={`card space-y-3 p-4 ${d.active || pendiente || sinPin ? "" : "opacity-60"}`}>
               <div className="flex items-center gap-3">
@@ -160,14 +161,16 @@ export default function RepartidoresPage() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-bold">
-                    {d.profiles.full_name} {yo && <span className="chip bg-agua-100 text-agua-700">Tú (dueño)</span>}
+                    {d.profiles.full_name.replace(/ \(baja\)$/, "")} {yo && <span className="chip bg-agua-100 text-agua-700">Tú (dueño)</span>}
                   </p>
                   <p className="text-sm text-slate-500">
                     <Phone className="mr-1 inline h-3.5 w-3.5 -mt-0.5" />
                     {d.profiles.phone}
                   </p>
                 </div>
-                {pendiente ? (
+                {baja ? (
+                  <span className="chip bg-slate-200 text-slate-700">Dado de baja</span>
+                ) : pendiente ? (
                   <span className="chip bg-amber-100 text-amber-800">Esperando que acepte</span>
                 ) : sinPin ? (
                   <span className="chip bg-orange-100 text-orange-800">Debe crear su PIN</span>
@@ -178,6 +181,9 @@ export default function RepartidoresPage() {
                 )}
               </div>
 
+              {baja ? (
+                <p className="rounded-2xl bg-slate-100 px-3 py-2 text-sm text-slate-600">Se dio de baja el {dateTime(d.profiles.deactivated_at!)} · sus entregas anteriores siguen en tu historial</p>
+              ) : (
               <button
                 onClick={() => openPay(d)}
                 className={`flex w-full items-center gap-3 rounded-2xl border-2 px-3 py-2.5 text-left transition active:scale-[0.99] ${d.pay_type ? "border-agua-200 bg-agua-50" : "border-amber-300 bg-amber-50"}`}
@@ -189,6 +195,7 @@ export default function RepartidoresPage() {
                 </span>
                 <Pencil className="h-4 w-4 shrink-0 text-slate-400" />
               </button>
+              )}
 
               <div className="flex flex-wrap gap-2">
                 {sinPin && d.profiles.phone && (
@@ -201,7 +208,7 @@ export default function RepartidoresPage() {
                     Entras como repartidor en «Soy repartidor» con tu mismo celular y PIN. Verás los pedidos que te asignes.
                   </p>
                 )}
-                {d.accepted && !yo && (
+                {d.accepted && !yo && !baja && (
                   <button
                     onClick={() => act(d, "PATCH", sinPin ? undefined : `¿Reiniciar el acceso de ${d.profiles.full_name}? Tendrá que crear un PIN nuevo.`)}
                     disabled={busyId === d.user_id}

@@ -70,6 +70,8 @@ export type Business = {
   lng: number | null;
   active: boolean;
   /** Logo público del negocio (bucket `logos`). */
+  /** Cuándo el dueño se dio de baja (el negocio queda inactivo). */
+  deactivated_at?: string | null;
   logo_url?: string | null;
   /** Horario de atención por día: { lun: { abre: "08:00", cierra: "20:00" }, … }. Un día ausente = cerrado. */
   opening_hours?: import("./hours").OpeningHours | null;

@@ -6,7 +6,7 @@ import { daysLabel, limaDate, planFor, type PlanState } from "@/lib/plan";
 import type { Business, PlatformSettings, SubscriptionPayment } from "@/lib/types";
 
 export type OwnerRow = Business & {
-  owner: { full_name: string; phone: string | null } | null;
+  owner: { full_name: string; phone: string | null; deactivated_at?: string | null; deactivated_phone?: string | null } | null;
   orders_total: number;
   orders_delivered: number;
   sales_validated: number;
@@ -61,11 +61,13 @@ export function useAdminData(): Omit<AdminData, "openInvite"> {
   const reload = useCallback(async () => {
     const db = supabaseBrowser();
     const [b, p, s, i, st] = await Promise.all([
-      db
-        .from("businesses")
-        .select("*, owner:profiles!businesses_owner_id_fkey(full_name, phone)")
-        .order("created_at", { ascending: false })
-        .returns<(Business & { owner: OwnerRow["owner"]; created_at: string })[]>(),
+      (async () => {
+        const q = (cols: string) =>
+          db.from("businesses").select(cols).order("created_at", { ascending: false }).returns<(Business & { owner: OwnerRow["owner"]; created_at: string })[]>();
+        // Si las columnas de baja aún no existen en la base, se sigue mostrando la lista sin ellas.
+        const full = await q("*, owner:profiles!businesses_owner_id_fkey(full_name, phone, deactivated_at, deactivated_phone)");
+        return full.error ? q("*, owner:profiles!businesses_owner_id_fkey(full_name, phone)") : full;
+      })(),
       db.from("subscription_payments").select("*").order("reported_at", { ascending: false }).returns<SubscriptionPayment[]>(),
       db.from("platform_settings").select("*").eq("id", 1).single<PlatformSettings>(),
       db
