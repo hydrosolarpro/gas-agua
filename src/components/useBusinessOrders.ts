@@ -24,14 +24,25 @@ export function useBusinessOrders(businessId: string, days = 14) {
     const supabase = supabaseBrowser();
     const channel = supabase
       .channel(`panel-${businessId}-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `business_id=eq.${businessId}` }, () => load())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `business_id=eq.${businessId}` }, (p) => {
+        // El cambio se ve al instante con lo que trae el evento; luego se completa con los detalles.
+        const row = p.new as Order;
+        setOrders((prev) => (prev ? prev.map((o) => (o.id === row.id ? { ...o, ...row, order_items: o.order_items, order_finance: o.order_finance, order_driver_pay: o.order_driver_pay } : o)) : prev));
+        load();
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders", filter: `business_id=eq.${businessId}` }, () => load())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [businessId, load]);
 
-  return { orders, reload: load };
+  /** Aplica de inmediato el pedido que devolvió una acción (validar, asignar…), sin esperar otra consulta. */
+  const patch = useCallback((row: Partial<Order> & { id: string }) => {
+    setOrders((prev) => (prev ? prev.map((o) => (o.id === row.id ? { ...o, ...row, order_items: o.order_items, order_finance: o.order_finance, order_driver_pay: o.order_driver_pay } : o)) : prev));
+  }, []);
+
+  return { orders, reload: load, patch };
 }
 
 export type Driver = {

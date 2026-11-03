@@ -2,6 +2,7 @@
 
 import { Bike, Store } from "@/components/icons";
 import { BusinessLogo, OpenChip } from "@/components/BusinessBadge";
+import { BusinessInfoCard, WelcomeClock } from "@/components/ClientWelcome";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -77,6 +78,8 @@ export default function ClientePage() {
   const visible = mine.length > 0 ? businesses.filter((b) => mine.includes(b.id)) : businesses;
   const favorite = visible.find((b) => b.id === profile.last_business_id);
   const others = visible.filter((b) => b.id !== profile.last_business_id);
+  const firstName = profile.full_name.split(" ")[0] || "vecino";
+  const mainBusiness = favorite ?? visible[0];
 
   const TABS: { id: Tab; label: string }[] = [
     { id: "pedir", label: "Pedir" },
@@ -95,10 +98,7 @@ export default function ClientePage() {
         </Link>
       </header>
       <main className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-3 p-3 md:p-5">
-        <section className="shrink-0">
-          <p className="text-sm text-slate-500">Hola, {profile.full_name.split(" ")[0] || "vecino"}</p>
-          <h1 className="text-xl font-extrabold md:text-2xl">¿Qué necesitas hoy?</h1>
-        </section>
+        <WelcomeClock name={firstName} />
 
         {driverInvites.map((i) => (
           <section key={i.business_id} className="card space-y-3 border-2 border-agua-200 p-4">
@@ -135,6 +135,7 @@ export default function ClientePage() {
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className={pane("pedir")}>
+        {mainBusiness && <BusinessInfoCard business={mainBusiness} customerName={firstName} />}
         {favorite && (
           <Link href={`/n/${favorite.slug}`} className="block rounded-3xl bg-gradient-to-br from-gas-600 to-gas-500 p-5 text-white shadow-lg shadow-gas-500/25">
             <p className="text-sm opacity-90">Pedir de nuevo a</p>

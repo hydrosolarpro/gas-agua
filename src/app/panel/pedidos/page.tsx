@@ -40,7 +40,7 @@ function matches(o: Order, f: Filter) {
   }
 }
 
-function OrderDetail({ order, onChanged }: { order: Order; onChanged: () => void }) {
+function OrderDetail({ order, onChanged }: { order: Order; onChanged: (row?: Order) => void }) {
   const { business, profile } = usePanel();
   const { drivers } = useDrivers(business.id);
   const [busy, setBusy] = useState<string | null>(null);
@@ -52,9 +52,9 @@ function OrderDetail({ order, onChanged }: { order: Order; onChanged: () => void
   async function run(key: string, fn: string, args: Record<string, unknown>) {
     setBusy(key);
     setError("");
-    const { error } = await supabaseBrowser().rpc(fn, args);
+    const { data, error } = await supabaseBrowser().rpc(fn, args);
     if (error) setError(errorMessage(error));
-    else onChanged();
+    else onChanged(data && typeof data === "object" && "id" in data ? (data as Order) : undefined);
     setBusy(null);
   }
 
@@ -183,7 +183,7 @@ function Pedidos() {
   const initial = (params.get("filtro") as Filter) || "todos";
   const [filter, setFilter] = useState<Filter>(FILTERS.some((f) => f.id === initial) ? initial : "todos");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { orders, reload } = useBusinessOrders(business.id, 30);
+  const { orders, reload, patch } = useBusinessOrders(business.id, 30);
 
   const counts = useMemo(
     () => Object.fromEntries(FILTERS.map((f) => [f.id, (orders ?? []).filter((o) => matches(o, f.id)).length])) as Record<Filter, number>,
@@ -223,7 +223,13 @@ function Pedidos() {
       </div>
 
       <Sheet open={Boolean(selected)} onClose={() => setSelectedId(null)} title={selected ? `Pedido #${selected.code}` : ""}>
-        {selected && <OrderDetail order={selected} onChanged={reload} />}
+        {selected && <OrderDetail
+            order={selected}
+            onChanged={(row) => {
+              if (row) patch(row);
+              reload();
+            }}
+          />}
       </Sheet>
     </main>
   );

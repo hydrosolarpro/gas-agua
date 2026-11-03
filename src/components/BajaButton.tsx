@@ -51,7 +51,7 @@ export function BajaButton({ className = "" }: { className?: string }) {
             <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-600">
               <li>Cerraremos tu cuenta y borraremos tu celular y tu dirección.</li>
               <li>Ya no podrás entrar ni hacer pedidos con esta cuenta.</li>
-              <li>Los negocios guardan el historial de tus pedidos anteriores.</li>
+              <li>Tu negocio conserva tu nombre y tus pedidos anteriores, marcados como «cliente dado de baja».</li>
               <li>Si quieres volver, puedes registrarte de nuevo con tu celular.</li>
             </ul>
             <button onClick={() => setStep(2)} className="cta cta-danger">

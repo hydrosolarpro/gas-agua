@@ -18,6 +18,8 @@ type InviteRow = { id: string; note: string | null; expires_at: string; uses: nu
 export default function Clientes() {
   const { business } = usePanel();
   const [customers, setCustomers] = useState<CustomerRow[] | null>(null);
+  // Celular que el cliente dio en sus pedidos: se conserva aunque se haya dado de baja.
+  const [oldPhones, setOldPhones] = useState<Record<string, string>>({});
   const [invites, setInvites] = useState<InviteRow[]>([]);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -47,6 +49,13 @@ export default function Clientes() {
         .returns<InviteRow[]>(),
     ]);
     setCustomers(c.data ?? []);
+    const gone = (c.data ?? []).filter((x) => x.profile?.deactivated_at).map((x) => x.customer_id);
+    if (gone.length) {
+      const { data: o } = await db.from("orders").select("customer_id, customer_phone").eq("business_id", business.id).in("customer_id", gone).not("customer_phone", "is", null).order("created_at", { ascending: false }).returns<{ customer_id: string; customer_phone: string }[]>();
+      const m: Record<string, string> = {};
+      for (const r of o ?? []) m[r.customer_id] ??= r.customer_phone;
+      setOldPhones(m);
+    }
     setInvites(i.data ?? []);
   }, [business.id]);
 
@@ -141,8 +150,9 @@ export default function Clientes() {
           return (
             <article key={c.customer_id} className="card flex items-center gap-3 p-4">
               <div className="min-w-0 flex-1">
-                <p className="truncate font-bold">{c.profile?.full_name || "Cliente"}</p>
-                <p className="truncate text-sm text-slate-500">{c.profile?.phone}</p>
+                <p className="truncate font-bold">{(c.profile?.full_name || "Cliente").replace(/ \(baja\)$/, "")}</p>
+                <p className="truncate text-sm text-slate-500">{c.profile?.phone ?? oldPhones[c.customer_id]}</p>
+                {baja && <p className="text-xs font-semibold text-slate-500">Se dio de baja el {dateTime(c.profile!.deactivated_at!)} · sus pedidos siguen en tu historial</p>}
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   <span className={`chip ${c.source === "invitacion" ? "bg-agua-100 text-agua-700" : "bg-slate-100 text-slate-700"}`}>
                     {c.source === "invitacion" ? "Invitado" : "Hizo un pedido"}

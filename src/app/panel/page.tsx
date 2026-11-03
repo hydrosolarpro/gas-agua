@@ -17,6 +17,7 @@ import { payLabel } from "@/lib/pay";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { DriverLocation, PaymentMethod } from "@/lib/types";
 import { usePanel } from "@/components/panel-context";
+import { WelcomeClock } from "@/components/ClientWelcome";
 
 type Tab = "pedidos" | "mapa" | "ingresos" | "soporte";
 
@@ -31,7 +32,7 @@ function Kpi({ label, value, tone, sub, className = "" }: { label: string; value
 }
 
 function Resumen() {
-  const { business } = usePanel();
+  const { business, profile } = usePanel();
   const params = useSearchParams();
   const { orders } = useBusinessOrders(business.id, 7);
   const { drivers } = useDrivers(business.id);
@@ -125,11 +126,9 @@ function Resumen() {
   // El Resumen cabe en la pantalla: en escritorio todo a la vista; en celular, una sección a la vez.
   return (
     <main className="mx-auto flex h-full max-w-7xl flex-col gap-3 p-3 md:p-5">
+      <WelcomeClock name={profile.full_name.split(" ")[0] || "dueño"} subtitle={`Resumen de hoy · ${business.name}`} />
       <div className="flex shrink-0 flex-wrap items-end justify-between gap-2">
-        <div>
-          <p className="text-sm text-slate-500">Resumen de hoy</p>
-          <h1 className="text-xl font-extrabold leading-tight md:text-2xl">{business.name}</h1>
-        </div>
+        <h2 className="sr-only">{business.name}</h2>
         {needsValidation.length > 0 && (
           <Link href="/panel/pedidos?filtro=validar" className="btn-gas !px-4 !py-2 text-sm">
             {needsValidation.length} pago(s) por validar

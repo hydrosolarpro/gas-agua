@@ -45,21 +45,25 @@ export function OwnerAlerts({ businessId }: { businessId: string }) {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders", filter: `business_id=eq.${businessId}` }, async (p) => {
         const id = (p.new as { id: string }).id;
         if (!first(`pedido:${id}`)) return;
-        // El total y los productos se guardan un instante después de crear el pedido.
-        await new Promise((r) => setTimeout(r, 1500));
-        const o = await briefOf(id);
+        // El pedido y sus productos se guardan juntos: al llegar el evento ya están completos. El aviso sale al instante.
+        const n = p.new as { code?: string; customer_name?: string; total?: number };
         notify({
           kind: "venta",
           title: "¡Nuevo pedido!",
-          body: o ? `#${o.code} · ${o.customer_name || "Cliente"} · ${money(o.total)}${itemsText(o) ? ` · ${itemsText(o)}` : ""}` : undefined,
+          body: n.code ? `#${n.code} · ${n.customer_name || "Cliente"} · ${money(Number(n.total ?? 0))}` : undefined,
           href: "/panel/pedidos?filtro=nuevos",
         });
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `business_id=eq.${businessId}` }, async (p) => {
-        const row = p.new as { id: string; payment_status: string; payment_reported_at: string | null };
+        const row = p.new as { id: string; code?: string; total?: number; customer_name?: string; payment_status: string; payment_reported_at: string | null };
         if (row.payment_status !== "reportado" || !first(`pago:${row.id}:${row.payment_reported_at}`)) return;
-        const o = await briefOf(row.id);
-        notify({ kind: "pago", title: "Pago por validar", body: o ? `#${o.code} · ${money(o.total)} · ${o.customer_name || "Cliente"}` : undefined, href: "/panel/pedidos?filtro=validar" });
+        notify({ kind: "pago", title: "Pago por validar", body: row.code ? `#${row.code} · ${money(Number(row.total ?? 0))} · ${row.customer_name || "Cliente"}` : undefined, href: "/panel/pedidos?filtro=validar" });
+      })
+      // Cada comprobante nuevo (por ejemplo el del agua, después del del gas) también avisa al instante.
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "order_proofs" }, (p) => {
+        const row = p.new as { id: string; amount?: number };
+        if (!first(`comprobante:${row.id}`)) return;
+        notify({ kind: "pago", title: "Nuevo comprobante de pago", body: row.amount ? `Monto informado: ${money(Number(row.amount))}` : undefined, href: "/panel/pedidos?filtro=validar" });
       })
       .subscribe();
     return () => {

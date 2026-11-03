@@ -30,7 +30,15 @@ function useProofs(orderId: string) {
   }, [orderId]);
   useEffect(() => {
     load(); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [load]);
+    const supabase = supabaseBrowser();
+    const channel = supabase
+      .channel(`proofs-${orderId}-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "order_proofs", filter: `order_id=eq.${orderId}` }, () => load())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [load, orderId]);
   return { proofs, reload: load };
 }
 

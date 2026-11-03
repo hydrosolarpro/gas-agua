@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { BarChart3, ChevronRight, UserRound, Wallet } from "lucide-react";
 import { BusinessLogo, HoursList, OpenChip } from "@/components/BusinessBadge";
+import { WelcomeClock } from "@/components/ClientWelcome";
 import { orderPay } from "@/lib/finance";
 import { limaDate } from "@/lib/plan";
 import { ORDER_SELECT, OrderRow } from "@/components/orders";
@@ -123,6 +124,7 @@ export default function RepartidorPage() {
         </Link>
       </header>
       <main className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-3 p-3 md:p-5">
+        <WelcomeClock name={profile.full_name.split(" ")[0] || "repartidor"} subtitle="Tus entregas de hoy" />
         <ErrorText>{error}</ErrorText>
         <Link href="/repartidor/estadisticas" className="flex shrink-0 items-center gap-3 rounded-3xl bg-gradient-to-r from-agua-600 to-agua-500 p-3.5 text-white shadow-lg active:scale-[0.99]">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20"><Wallet className="h-7 w-7" /></span>
