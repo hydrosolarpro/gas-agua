@@ -329,12 +329,12 @@ export default function Estadisticas() {
         </p>
       </section>
 
-      <section className="flex min-h-0 flex-1 flex-col gap-3">
+      <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto lg:overflow-visible">
         {!report && <Empty icon={<FileText className="h-10 w-10 text-slate-300" />} title="Elige un período" text="Y pulsa «Ver estadísticas»." />}
         {report && (
           <>
             <p className="shrink-0 text-sm font-semibold text-slate-700">Período: {report.range.label}</p>
-            <div className="flex shrink-0 gap-2 overflow-x-auto pb-1">
+            <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
               {[
                 ["Pedidos", String(report.summary.orders), "text-ink"],
                 ["Entregados", String(report.summary.delivered), "text-emerald-600"],
@@ -348,14 +348,14 @@ export default function Estadisticas() {
                 ["Clientes nuevos", String(report.summary.newCustomers), "text-ink"],
                 ["Con pedidos", String(report.summary.activeCustomers), "text-ink"],
               ].map(([label, value, tone]) => (
-                <div key={label} className="card min-w-[7.5rem] shrink-0 px-3 py-2">
+                <div key={label} className="card min-w-0 px-3 py-2">
                   <p className="text-[11px] font-semibold text-slate-500">{label}</p>
                   <p className={`text-lg font-extrabold leading-tight ${tone}`}>{value}</p>
                 </div>
               ))}
             </div>
 
-            <div className="flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
+            <div className="flex shrink-0 flex-wrap gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
               {[
                 { id: "entregas" as const, label: `Entregas (${report.deliveries.length})` },
                 { id: "ganancias" as const, label: "Ganancias" },
@@ -368,14 +368,14 @@ export default function Estadisticas() {
                   role="tab"
                   aria-selected={rtab === t.id}
                   onClick={() => setRtab(t.id)}
-                  className={`flex-1 rounded-xl px-2 py-2 text-sm font-bold transition ${rtab === t.id ? "bg-white text-agua-700 shadow-sm" : "text-slate-500"}`}
+                  className={`min-w-[30%] flex-1 rounded-xl px-2 py-2 text-sm font-bold transition ${rtab === t.id ? "bg-white text-agua-700 shadow-sm" : "text-slate-500"}`}
                 >
                   {t.label}
                 </button>
               ))}
             </div>
 
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+            <div className="min-h-[18rem] flex-1 space-y-2 lg:min-h-0 lg:overflow-y-auto">
               {rtab === "entregas" && report.deliveries.length === 0 && <Empty icon={<FileText className="h-10 w-10 text-slate-300" />} title="Sin entregas en este período" />}
               {rtab === "entregas" &&
                 report.deliveries.map((d) => {

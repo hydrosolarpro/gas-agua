@@ -23,7 +23,7 @@ type Tab = "pedidos" | "mapa" | "ingresos" | "soporte";
 
 function Kpi({ label, value, tone, sub, className = "" }: { label: string; value: string; tone: string; sub?: string; className?: string }) {
   return (
-    <div className={`card min-w-[7rem] shrink-0 px-3 py-2.5 sm:min-w-0 md:p-4 ${className}`}>
+    <div className={`card min-w-0 px-3 py-2.5 md:p-4 ${className}`}>
       <p className="truncate text-[11px] font-semibold text-slate-500 md:text-xs">{label}</p>
       <p className={`mt-0.5 truncate text-lg font-extrabold md:text-2xl ${tone}`}>{value}</p>
       {sub && <p className="text-xs text-slate-500">{sub}</p>}
@@ -125,7 +125,7 @@ function Resumen() {
 
   // El Resumen cabe en la pantalla: en escritorio todo a la vista; en celular, una sección a la vez.
   return (
-    <main className="mx-auto flex h-full max-w-7xl flex-col gap-3 p-3 md:p-5">
+    <main className="mx-auto flex h-full max-w-7xl flex-col gap-3 overflow-y-auto p-3 md:p-5 lg:overflow-visible">
       <WelcomeClock name={profile.full_name.split(" ")[0] || "dueño"} subtitle={`Resumen de hoy · ${business.name}`} />
       <div className="flex shrink-0 flex-wrap items-end justify-between gap-2">
         <h2 className="sr-only">{business.name}</h2>
@@ -158,14 +158,14 @@ function Resumen() {
         </section>
       )}
 
-      <section className="flex shrink-0 gap-2 overflow-x-auto sm:grid sm:grid-cols-4 md:gap-3 xl:grid-cols-7">
+      <section className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4 md:gap-3 xl:grid-cols-7">
         <Kpi label="Pedidos hoy" value={String(stats.total)} tone="text-ink" />
         <Kpi label="En curso" value={String(stats.active)} tone="text-indigo-600" />
         <Kpi label="Entregados" value={String(stats.delivered)} tone="text-emerald-600" />
         <Kpi label="Ingresos validados" value={money(stats.validated)} tone="text-agua-700" />
         <Kpi label="Por validar" value={money(stats.toValidate)} tone="text-orange-600" sub={`${stats.toValidateCount} ${stats.toValidateCount === 1 ? "pago" : "pagos"}`} />
         <Kpi label="Ganancia bruta hoy" value={stats.hasProfit ? money(stats.gross) : "—"} tone="text-emerald-700" sub={stats.hasProfit ? "ventas − costo" : "registra tus costos"} />
-        <Kpi label="Ganancia neta hoy" value={stats.hasProfit ? money(stats.net) : "—"} tone="text-emerald-700" sub={stats.hasProfit ? "− pago a repartidores" : "en Mis productos"} />
+        <Kpi className="col-span-2 sm:col-span-1" label="Ganancia neta hoy" value={stats.hasProfit ? money(stats.net) : "—"} tone="text-emerald-700" sub={stats.hasProfit ? "− pago a repartidores" : "en Mis productos"} />
       </section>
 
       <div className="flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1 lg:hidden" role="tablist">
@@ -182,7 +182,7 @@ function Resumen() {
         ))}
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-3 lg:grid-cols-5">
+      <div className="grid min-h-[26rem] flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-3 lg:min-h-0 lg:grid-cols-5">
         <div className={`card min-h-0 flex-col overflow-hidden lg:col-span-3 ${show("mapa")}`}>
           <div className="flex shrink-0 items-center justify-between px-4 py-2.5">
             <h2 className="font-bold">Mapa en vivo</h2>

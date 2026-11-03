@@ -197,7 +197,7 @@ function Pedidos() {
   return (
     <main className="mx-auto flex h-full max-w-6xl flex-col gap-3 p-3 md:p-5">
       <h1 className="shrink-0 text-xl font-extrabold md:text-2xl">Mis Pedidos</h1>
-      <div className="flex shrink-0 gap-2 overflow-x-auto pb-1">
+      <div className="flex shrink-0 flex-wrap gap-2">
         {FILTERS.map((f) => (
           <button
             key={f.id}
