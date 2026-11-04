@@ -62,20 +62,19 @@ export function openStatus(hours: OpeningHours | null | undefined, now = new Dat
 }
 
 /**
- * Inicio de la «jornada» del negocio: el último cierre de su horario ya pasado (hora de Lima). Al llegar la hora de cierre
- * la jornada se reinicia y empieza una nueva; sin horario definido, la jornada empieza a la medianoche.
+ * Inicio de la «jornada» del negocio (hora de Lima): la medianoche de hoy, o la hora de cierre de hoy si ya pasó.
+ * Así «Mis Pedidos» muestra solo los pedidos de hoy y se reinicia a cero al cerrar el negocio.
  */
 export function businessDayStart(hours: OpeningHours | null | undefined, now = new Date()): Date {
   const ymd = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(d);
+  // Nunca antes de la medianoche de hoy: los pedidos de días anteriores no se mezclan con los de hoy, haya o no horario ese día.
+  const midnight = new Date(`${ymd(now)}T00:00:00-05:00`);
   const h = cleanHours(hours);
-  if (h) {
-    for (let back = 0; back <= 7; back++) {
-      const day = new Date(now.getTime() - back * 86_400_000);
-      const d = h[DAY_KEYS[limaNow(day).idx]];
-      if (!d) continue;
-      const close = new Date(`${ymd(day)}T${d.cierra}:00-05:00`);
-      if (close.getTime() <= now.getTime()) return close;
-    }
+  const today = h?.[DAY_KEYS[limaNow(now).idx]];
+  if (today) {
+    const close = new Date(`${ymd(now)}T${today.cierra}:00-05:00`);
+    // Pasada la hora de cierre de hoy, la jornada se reinicia a cero.
+    if (close.getTime() <= now.getTime()) return close;
   }
-  return new Date(`${ymd(now)}T00:00:00-05:00`);
+  return midnight;
 }
