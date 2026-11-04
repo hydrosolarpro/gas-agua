@@ -41,9 +41,7 @@ export function BusinessInfoCard({ business, customerName }: { business: Busines
       <div className="flex items-center gap-3">
         <BusinessLogo business={business} size="lg" />
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tu negocio</p>
           <p className="break-words text-xl font-extrabold leading-tight">{business.name}</p>
-          <OpenChip hours={business.opening_hours} />
         </div>
       </div>
       {business.phone && (
@@ -59,7 +57,10 @@ export function BusinessInfoCard({ business, customerName }: { business: Busines
       {business.opening_hours ? (
         <details className="rounded-2xl bg-slate-50 p-3">
           <summary className="cursor-pointer text-sm font-bold text-slate-700">Ver horario de atención completo</summary>
-          <div className="mt-2"><HoursList hours={business.opening_hours} /></div>
+          <div className="mt-2 space-y-2">
+            <OpenChip hours={business.opening_hours} />
+            <HoursList hours={business.opening_hours} />
+          </div>
         </details>
       ) : (
         <p className="text-sm text-slate-500">El negocio aún no publicó su horario de atención.</p>
