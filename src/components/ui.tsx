@@ -60,14 +60,14 @@ export function MethodBadge({ method }: { method: PaymentMethod }) {
 export function TopBar({ title, back, right }: { title: ReactNode; back?: string | true; right?: ReactNode }) {
   const router = useRouter();
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200/70 bg-white/90 px-4 py-3 backdrop-blur">
+    <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2">
       {back &&
         (back === true ? (
-          <button onClick={() => router.back()} className="rounded-full p-2 hover:bg-slate-100" aria-label="Volver">
+          <button onClick={() => router.back()} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-[background-color,transform] duration-150 ease-out-strong hover:bg-slate-100 active:scale-95" aria-label="Volver">
             <ArrowLeft className="h-5 w-5" />
           </button>
         ) : (
-          <Link href={back} className="rounded-full p-2 hover:bg-slate-100" aria-label="Volver">
+          <Link href={back} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-[background-color,transform] duration-150 ease-out-strong hover:bg-slate-100 active:scale-95" aria-label="Volver">
             <ArrowLeft className="h-5 w-5" />
           </Link>
         ))}

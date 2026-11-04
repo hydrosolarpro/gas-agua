@@ -92,11 +92,11 @@ export default function ClientePage() {
   return (
     <div className="flex h-full flex-col">
       <header className="flex shrink-0 items-center justify-end bg-white px-4 py-2 shadow-sm">
-        <Link href="/cuenta" className="rounded-full bg-slate-100 p-2" aria-label="Mi cuenta">
+        <Link href="/cuenta" className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition-[background-color,transform] duration-150 ease-out-strong hover:bg-slate-200 active:scale-95" aria-label="Mi cuenta">
           <UserRound className="h-5 w-5" />
         </Link>
       </header>
-      <main className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-3 p-3 md:p-5">
+      <main className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-3 overflow-y-auto p-3 md:p-5">
         <WelcomeClock name={firstName} />
 
         {driverInvites.map((i) => (
@@ -132,7 +132,7 @@ export default function ClientePage() {
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-[14rem] flex-1">
           <div className={pane("pedir")}>
         {mainBusiness && <BusinessInfoCard business={mainBusiness} customerName={firstName} />}
         {favorite && (

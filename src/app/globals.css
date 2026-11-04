@@ -3,9 +3,12 @@
 @theme {
   --color-agua-50: #ecfeff;
   --color-agua-100: #cffafe;
+  --color-agua-200: #a5f3fc;
   --color-agua-500: #06b6d4;
   --color-agua-600: #0891b2;
   --color-agua-700: #0e7490;
+  --color-agua-800: #155e75;
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
   --color-gas-50: #fff7ed;
   --color-gas-100: #ffedd5;
   --color-gas-500: #f97316;
@@ -30,6 +33,68 @@ body {
   color: var(--color-ink);
   -webkit-tap-highlight-color: transparent;
 }
+/* Navegación: ítems del menú lateral. El activo es una píldora suave, no un bloque de color con sombra. */
+@utility nav-item {
+  @apply flex min-h-11 items-center gap-3 rounded-2xl px-3.5 py-2.5 font-semibold text-slate-600 transition-[background-color,color,transform] duration-150 ease-out-strong hover:bg-slate-100 hover:text-ink active:scale-[0.98];
+}
+@utility nav-item-active {
+  @apply bg-agua-100 font-bold text-agua-800 hover:bg-agua-100 hover:text-agua-800;
+}
+/* Navegación inferior del celular: el ícono activo va sobre una píldora; área táctil mínima de 56 px. */
+@utility tab-item {
+  @apply flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 px-0 pb-1.5 pt-1.5 text-[10px] font-semibold tracking-tighter text-slate-500 transition-colors duration-150 ease-out-strong active:scale-[0.97] min-[400px]:text-[11px];
+}
+@utility tab-item-active {
+  @apply font-bold text-agua-800;
+}
+@utility tab-pill {
+  @apply flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-150 ease-out-strong;
+}
+@utility tab-pill-active {
+  @apply bg-agua-100;
+}
+
+/* Pestañas segmentadas de todas las sesiones: pista suave, pestaña activa clara con borde, sin sombra en reposo. */
+[role="tablist"] {
+  background-color: #e9eef3;
+  padding: 4px;
+  border-radius: 1rem;
+}
+[role="tablist"] > [role="tab"] {
+  min-height: 44px;
+  border-radius: 0.75rem;
+  color: #475569;
+  font-weight: 700;
+  line-height: 1.2;
+  background-color: transparent;
+  box-shadow: none;
+  transition: background-color 150ms var(--ease-out-strong), color 150ms var(--ease-out-strong), box-shadow 150ms var(--ease-out-strong), transform 120ms var(--ease-out-strong);
+}
+[role="tablist"] > [role="tab"][aria-selected="true"] {
+  background-color: #fff;
+  color: #155e75;
+  font-weight: 800;
+  box-shadow: inset 0 0 0 1.5px #a5f3fc;
+}
+[role="tablist"] > [role="tab"]:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  [role="tablist"] > [role="tab"][aria-selected="false"]:hover {
+    background-color: rgba(255, 255, 255, 0.65);
+    color: #0f172a;
+  }
+}
+[role="tablist"] > [role="tab"]:focus-visible {
+  outline: 2px solid #0891b2;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  [role="tablist"] > [role="tab"] {
+    transition: none;
+  }
+}
+
 @utility card {
   @apply rounded-3xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)];
 }

@@ -119,11 +119,11 @@ export default function RepartidorPage() {
             <OpenChip hours={business.opening_hours} />
           </div>
         </div>
-        <Link href="/cuenta" className="rounded-full bg-slate-100 p-2" aria-label="Mi cuenta">
+        <Link href="/cuenta" className="shrink-0 flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition-[background-color,transform] duration-150 ease-out-strong hover:bg-slate-200 active:scale-95" aria-label="Mi cuenta">
           <UserRound className="h-5 w-5" />
         </Link>
       </header>
-      <main className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-3 p-3 md:p-5">
+      <main className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-3 overflow-y-auto p-3 md:p-5">
         <WelcomeClock name={profile.full_name.split(" ")[0] || "repartidor"} subtitle="Tus entregas de hoy" />
         <ErrorText>{error}</ErrorText>
         <Link href="/repartidor/estadisticas" className="flex shrink-0 flex-col gap-3 rounded-3xl bg-gradient-to-r from-agua-600 to-agua-500 p-3.5 text-white shadow-lg active:scale-[0.99] sm:flex-row sm:items-center">
@@ -159,7 +159,7 @@ export default function RepartidorPage() {
             </button>
           ))}
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2">
+        <div className="grid min-h-[16rem] flex-1 grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2">
           <div className={`min-h-0 overflow-y-auto ${pane("mias")}`}>
         <section className="space-y-3">
           <h2 className="flex items-center gap-2 font-bold"><Bike className="h-5 w-5 text-agua-600" /> Mis entregas ({mine.length})</h2>

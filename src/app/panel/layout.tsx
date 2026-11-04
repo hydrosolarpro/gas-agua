@@ -40,37 +40,38 @@ export default function PanelLayout({ children }: { children: ReactNode }) {
             {NAV.map(({ href, label, icon: Icon }) => {
               const active = href === "/panel" ? pathname === href : pathname.startsWith(href);
               return (
-                <Link key={href} href={href} className={`flex items-center gap-3 rounded-2xl px-4 py-2.5 font-semibold transition ${active ? "bg-agua-600 text-white shadow" : "text-slate-600 hover:bg-slate-100"}`}>
-                  <Icon className="h-5 w-5" /> {label}
+                <Link key={href} href={href} aria-current={active ? "page" : undefined} className={`nav-item ${active ? "nav-item-active" : ""}`}>
+                  <Icon className="h-5 w-5 shrink-0" /> {label}
                 </Link>
               );
             })}
           </nav>
           <SupportCard compact />
-          <Link href="/panel/suscripcion" className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold ${pathname.startsWith("/panel/suscripcion") ? "bg-agua-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
-            <CreditCard className="h-5 w-5" /> Mi plan y pagos
+          <Link href="/panel/suscripcion" aria-current={pathname.startsWith("/panel/suscripcion") ? "page" : undefined} className={`nav-item text-sm ${pathname.startsWith("/panel/suscripcion") ? "nav-item-active" : ""}`}>
+            <CreditCard className="h-5 w-5 shrink-0" /> Mi plan y pagos
           </Link>
-          <Link href="/cuenta" className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">
-            <UserRound className="h-5 w-5" /> {profile.full_name.split(" ")[0] || "Mi cuenta"}
+          <Link href="/cuenta" className="nav-item text-sm">
+            <UserRound className="h-5 w-5 shrink-0" /> {profile.full_name.split(" ")[0] || "Mi cuenta"}
           </Link>
         </aside>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <header className="flex shrink-0 items-center justify-between bg-white px-4 py-2 shadow-sm md:hidden">
             <span className="flex min-w-0 items-center gap-2"><BusinessLogo business={business} size="sm" /><span className="truncate text-base font-extrabold text-slate-900">{business.name}</span></span>
-            <Link href="/cuenta" className="rounded-full bg-slate-100 p-2" aria-label="Mi cuenta">
+            <Link href="/cuenta" className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition-[background-color,transform] duration-150 ease-out-strong hover:bg-slate-200 active:scale-95" aria-label="Mi cuenta">
               <UserRound className="h-5 w-5" />
             </Link>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <PlanGate business={business}>{children}</PlanGate>
           </div>
-        <nav className="grid shrink-0 grid-cols-7 border-t border-slate-200 bg-white md:hidden">
+        <nav aria-label="Menú principal" className="grid shrink-0 grid-cols-7 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
           {NAV.map(({ href, short, icon: Icon }) => {
             const active = href === "/panel" ? pathname === href : pathname.startsWith(href);
             return (
-              <Link key={href} href={href} className={`flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold ${active ? "text-agua-700" : "text-slate-500"}`}>
-                <Icon className="h-5 w-5" /> {short}
+              <Link key={href} href={href} aria-current={active ? "page" : undefined} className={`tab-item ${active ? "tab-item-active" : ""}`}>
+                <span className={`tab-pill ${active ? "tab-pill-active" : ""}`}><Icon className="h-5 w-5" /></span>
+                <span className="max-w-full truncate">{short}</span>
               </Link>
             );
           })}

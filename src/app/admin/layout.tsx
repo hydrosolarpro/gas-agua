@@ -43,14 +43,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-3 rounded-2xl px-4 py-3 font-semibold transition ${isActive(href) ? "bg-agua-600 text-white shadow" : "text-slate-600 hover:bg-slate-100"}`}
+                aria-current={isActive(href) ? "page" : undefined}
+                className={`nav-item ${isActive(href) ? "nav-item-active" : ""}`}
               >
-                <Icon className="h-5 w-5" /> {label}
+                <Icon className="h-5 w-5 shrink-0" /> {label}
               </Link>
             ))}
           </nav>
-          <Link href="/cuenta" className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">
-            <UserRound className="h-5 w-5" /> {profile.full_name.split(" ")[0] || "Mi cuenta"}
+          <Link href="/cuenta" className="nav-item text-sm">
+            <UserRound className="h-5 w-5 shrink-0" /> {profile.full_name.split(" ")[0] || "Mi cuenta"}
           </Link>
         </aside>
 
@@ -61,20 +62,22 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <button onClick={() => setInviteOpen(true)} className="btn-gas px-4 py-2 text-sm">
                 <UserPlus className="h-4 w-4" /> Invitar
               </button>
-              <Link href="/cuenta" className="rounded-full bg-slate-100 p-2" aria-label="Mi cuenta">
+              <Link href="/cuenta" className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition-[background-color,transform] duration-150 ease-out-strong hover:bg-slate-200 active:scale-95" aria-label="Mi cuenta">
                 <UserRound className="h-5 w-5" />
               </Link>
             </div>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
-        <nav className="grid shrink-0 grid-cols-4 border-t border-slate-200 bg-white md:hidden">
+        <nav aria-label="Menú principal" className="grid shrink-0 grid-cols-4 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
           {NAV.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
-              className={`flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold ${isActive(href) ? "text-agua-700" : "text-slate-500"}`}
+              aria-current={isActive(href) ? "page" : undefined}
+              className={`tab-item ${isActive(href) ? "tab-item-active" : ""}`}
             >
-              <Icon className="h-5 w-5" /> {label}
+              <span className={`tab-pill ${isActive(href) ? "tab-pill-active" : ""}`}><Icon className="h-5 w-5" /></span>
+              <span className="max-w-full truncate">{label}</span>
             </Link>
           ))}
         </nav>
