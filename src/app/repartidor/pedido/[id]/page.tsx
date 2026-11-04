@@ -226,7 +226,12 @@ export default function EntregaPage() {
             {busy ? <Spinner className="h-5 w-5" /> : <Bike className="h-5 w-5" />} Salir a entregar · ≈ {formatEta(estimate.secs)}
           </button>
         )}
-        {order.status === "en_camino" && mine && order.payment_status !== "reportado" && (
+        {order.status === "en_camino" && mine && !order.arrived_at && order.payment_status !== "reportado" && (
+          <button onClick={() => rpc("mark_arrived", { p_order_id: order.id })} disabled={busy} className="cta-success">
+            {busy ? <Spinner className="h-6 w-6" /> : <MapPin className="h-6 w-6" />} Ya he llegado
+          </button>
+        )}
+        {order.status === "en_camino" && mine && Boolean(order.arrived_at) && order.payment_status !== "reportado" && (
           <button
             onClick={() => {
               setMethod(order.payment_method === "otro" ? "efectivo" : order.payment_method);
@@ -236,12 +241,12 @@ export default function EntregaPage() {
             }}
             className="cta-success"
           >
-            <CircleCheck className="h-6 w-6" /> Entregué y cobré
+            <CircleCheck className="h-6 w-6" /> {order.payment_method === "efectivo" ? "Entregué y cobré" : "Confirmar pago"}
           </button>
         )}
         {order.status === "en_camino" && order.payment_status === "reportado" && (
           <p className="rounded-2xl bg-orange-50 p-4 text-center font-semibold text-orange-800">
-            Cobro de {money(order.amount_received ?? total)} registrado. Cuando el negocio lo valide, el pedido queda entregado.
+            Pago de {money(order.amount_received ?? total)} confirmado. Esperando que el negocio lo valide; apenas lo haga, el pedido queda entregado.
           </p>
         )}
         {order.status === "entregado" && (
@@ -253,7 +258,7 @@ export default function EntregaPage() {
         </aside>
       </div>
 
-      <Sheet open={payOpen} onClose={() => setPayOpen(false)} title="Registrar cobro">
+      <Sheet open={payOpen} onClose={() => setPayOpen(false)} title={method === "efectivo" ? "Entregué y cobré en efectivo" : "Confirmar pago"}>
         <p className="mb-4 text-3xl font-extrabold">{money(total)}</p>
         <p className="label">¿Cómo pagó el cliente?</p>
         <div className="grid grid-cols-3 gap-2">

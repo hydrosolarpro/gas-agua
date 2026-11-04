@@ -13,16 +13,18 @@ const STEPS = [
   { key: "recibido", label: "Recibido" },
   { key: "aceptado", label: "Aceptado" },
   { key: "en_camino", label: "En camino" },
+  { key: "llegada", label: "Llegada al punto" },
   { key: "pago", label: "Pago" },
   { key: "validado", label: "Validado" },
   { key: "entregado", label: "Entregado" },
 ] as const;
 
-/** Último paso alcanzado: Recibido → Aceptado → En camino → Pago → Validado → Entregado. */
+/** Último paso alcanzado: Recibido → Aceptado → En camino → Llegada al punto → Pago → Validado → Entregado. */
 function reached(order: Order): number {
-  if (order.status === "entregado") return 5;
-  if (order.payment_status === "validado") return 4;
-  if (order.payment_status === "reportado") return 3;
+  if (order.status === "entregado") return 6;
+  if (order.payment_status === "validado") return 5;
+  if (order.payment_status === "reportado") return 4;
+  if (order.arrived_at && order.status === "en_camino") return 3;
   if (order.status === "en_camino") return 2;
   if (order.status === "aceptado") return 1;
   return 0;
@@ -33,6 +35,7 @@ function stepTime(order: Order, key: (typeof STEPS)[number]["key"]) {
     key === "recibido" ? order.created_at
     : key === "aceptado" ? order.accepted_at
     : key === "en_camino" ? order.picked_at
+    : key === "llegada" ? order.arrived_at
     : key === "pago" ? order.payment_reported_at
     : key === "validado" ? order.payment_validated_at
     : order.delivered_at;
@@ -47,7 +50,7 @@ export function OrderTimeline({ order }: { order: Order }) {
   const rejected = order.payment_status === "rechazado" && order.status !== "entregado";
   return (
     <>
-      <ol className="grid grid-cols-6 gap-0.5">
+      <ol className="grid grid-cols-7 gap-0.5">
         {STEPS.map((s, i) => {
           const done = i <= current;
           return (
@@ -63,7 +66,7 @@ export function OrderTimeline({ order }: { order: Order }) {
                 </span>
                 <span className={`h-1 flex-1 rounded ${i === STEPS.length - 1 ? "opacity-0" : i < current ? "bg-agua-500" : "bg-slate-200"}`} />
               </div>
-              <span className={`mt-1.5 text-[10px] font-semibold leading-tight ${done ? "text-slate-800" : "text-slate-400"}`}>{s.label}</span>
+              <span className={`mt-1.5 text-[9px] font-semibold leading-tight min-[400px]:text-[10px] ${done ? "text-slate-800" : "text-slate-400"}`}>{s.label}</span>
               <span className="text-[9px] text-slate-400">{done ? stepTime(order, s.key) : ""}</span>
             </li>
           );

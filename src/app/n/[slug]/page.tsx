@@ -4,7 +4,7 @@ import { CategoryIcon, MapPin, MethodMark, Package, Search } from "@/components/
 
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Minus, Phone, Plus, ShoppingBag } from "lucide-react";
 import { LocationPicker, type PickedLocation } from "@/components/LocationPicker";
 import { Empty, ErrorText, FullLoader, Spinner, TopBar } from "@/components/ui";
@@ -15,6 +15,8 @@ import type { Business, PaymentMethod, Product } from "@/lib/types";
 import { BusinessHeader, HoursList } from "@/components/BusinessBadge";
 
 type Step = "productos" | "ubicacion" | "pago";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function StorePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -128,10 +130,18 @@ export default function StorePage() {
     }
   }
 
+  // Un identificador por intento de envío: aunque se toque dos veces el botón, solo se crea un pedido.
+  const requestId = useRef<string | null>(null);
+  const submitting = useRef(false);
+
   async function submit() {
+    if (submitting.current) return;
     if (!business || !location.point || !method) return setError("Elige cómo vas a pagar");
     const cash = cashAmount ? Number(cashAmount) : null;
     if (method === "efectivo" && cash !== null && cash < total) return setError("El monto con el que pagas debe cubrir el total");
+    // Se genera al primer envío y se conserva si hay que reintentar: así un reintento nunca crea un segundo pedido.
+    if (!requestId.current && typeof crypto !== "undefined" && "randomUUID" in crypto) requestId.current = crypto.randomUUID();
+    submitting.current = true;
     setSending(true);
     setError("");
     const { data, error } = await supabaseBrowser().rpc("create_order", {
@@ -144,8 +154,10 @@ export default function StorePage() {
       p_reference: location.reference,
       p_cash_amount: cash,
       p_notes: notes,
+      p_request_id: requestId.current && UUID_RE.test(requestId.current) ? requestId.current : null,
     });
     if (error) {
+      submitting.current = false;
       setError(errorMessage(error));
       setSending(false);
       return;

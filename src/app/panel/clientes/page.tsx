@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Copy, KeyRound, MessageCircle, Search as SearchIcon, UserPlus, Users } from "lucide-react";
+import { Copy, FileSpreadsheet, KeyRound, MessageCircle, Search as SearchIcon, UserPlus, Users } from "lucide-react";
 import { usePanel } from "@/components/panel-context";
 import { Empty, ErrorText, FullLoader, Sheet, Spinner } from "@/components/ui";
 import { dateTime, errorMessage, waLink } from "@/lib/format";
@@ -31,6 +31,7 @@ export default function Clientes() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
     const db = supabaseBrowser();
@@ -99,6 +100,62 @@ export default function Clientes() {
     load();
   }
 
+  /** Descarga en CSV (se abre en Excel) los datos de todos los clientes: contacto, estado, pedidos y compras. */
+  async function exportExcel() {
+    if (!customers) return;
+    setExporting(true);
+    setError("");
+    try {
+      const db = supabaseBrowser();
+      const stats = new Map<string, { n: number; spent: number; last: string; address: string; phone: string }>();
+      for (let from = 0; ; from += 1000) {
+        const { data, error: e } = await db
+          .from("orders")
+          .select("customer_id, total, status, created_at, address_text, customer_phone")
+          .eq("business_id", business.id)
+          .order("created_at", { ascending: false })
+          .range(from, from + 999)
+          .returns<{ customer_id: string; total: number; status: string; created_at: string; address_text: string; customer_phone: string | null }[]>();
+        if (e) throw new Error(e.message);
+        for (const o of data ?? []) {
+          const c = stats.get(o.customer_id) ?? { n: 0, spent: 0, last: o.created_at, address: o.address_text, phone: o.customer_phone ?? "" };
+          if (o.status !== "cancelado") c.n++;
+          if (o.status === "entregado") c.spent += Number(o.total);
+          stats.set(o.customer_id, c);
+        }
+        if (!data || data.length < 1000) break;
+      }
+      const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+      const rows = [
+        ["Nombre", "Celular", "Estado", "Cómo llegó", "Se registró", "Pedidos (sin cancelados)", "Comprado entregado (S/)", "Último pedido", "Última dirección"],
+        ...customers.map((c) => {
+          const st = stats.get(c.customer_id);
+          const baja = Boolean(c.profile?.deactivated_at);
+          return [
+            (c.profile?.full_name || "Cliente").replace(/ \(baja\)$/, ""),
+            c.profile?.phone ?? st?.phone ?? "",
+            baja ? "Dado de baja" : "Activo",
+            c.source === "invitacion" ? "Invitado" : "Hizo un pedido",
+            dateTime(c.created_at),
+            st?.n ?? 0,
+            (st?.spent ?? 0).toFixed(2),
+            st ? dateTime(st.last) : "",
+            st?.address ?? "",
+          ];
+        }),
+      ];
+      const blob = new Blob(["\uFEFF" + rows.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `clientes-${business.slug}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      setError((e as Error).message || "No se pudo preparar el Excel");
+    }
+    setExporting(false);
+  }
+
   async function revoke(id: string) {
     const { error: e } = await supabaseBrowser().rpc("owner_revoke_customer_invitation", { p_id: id });
     if (e) setError(errorMessage(e));
@@ -115,9 +172,14 @@ export default function Clientes() {
     <main className="mx-auto max-w-6xl space-y-3 p-3 md:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold">Mis Clientes</h1>
-        <button onClick={() => setOpen(true)} className="btn-gas px-4 py-2.5 text-sm">
-          <UserPlus className="h-4 w-4" /> Invitar clientes
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={exportExcel} disabled={exporting || customers.length === 0} className="btn-outline px-4 py-2.5 text-sm">
+            {exporting ? <Spinner className="h-4 w-4" /> : <FileSpreadsheet className="h-4 w-4" />} Descargar Excel
+          </button>
+          <button onClick={() => setOpen(true)} className="btn-gas px-4 py-2.5 text-sm">
+            <UserPlus className="h-4 w-4" /> Invitar clientes
+          </button>
+        </div>
       </div>
       <p className="text-sm text-slate-600">
         Invita a tus clientes con un enlace. Quien se registre con él queda en tu lista. También aparecen los que te hacen un pedido.

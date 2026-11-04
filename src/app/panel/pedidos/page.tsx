@@ -5,7 +5,7 @@ import { Bike, CircleCheck, CircleX, Hand, Inbox, MapPin, StickyNote } from "@/c
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { MessageCircle, Phone } from "lucide-react";
 import Map from "@/components/map/Map";
 import { OrderItems, OrderRow, OrderTimeline } from "@/components/orders";
@@ -15,19 +15,21 @@ import { EtaCard, MapEta, etaLabel } from "@/components/Eta";
 import { Traza } from "@/components/Traza";
 import { orderFinance, orderPay } from "@/lib/finance";
 import { ACTIVE_STATUSES, dateTime, errorMessage, money, telLink, waLink } from "@/lib/format";
+import { businessDayStart } from "@/lib/hours";
 import { useDriverLocation } from "@/lib/hooks";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Order } from "@/lib/types";
 import { usePanel } from "@/components/panel-context";
 
-// Mis Pedidos es la bandeja de trabajo: solo pedidos abiertos. Al entregarse o cancelarse pasan a Mis Estadísticas,
-// donde se consultan, filtran y descargan por día, mes o año.
-type Filter = "todos" | "nuevos" | "curso" | "validar";
+// Mis Pedidos es la bandeja de trabajo: los pedidos abiertos más los entregados de la jornada de hoy (la jornada se
+// reinicia a cero al llegar la hora de cierre del negocio). Los cancelados no cuentan. Todo el historial está en Mis Estadísticas.
+type Filter = "todos" | "nuevos" | "curso" | "validar" | "entregados";
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "todos", label: "Todos" },
   { id: "nuevos", label: "Nuevos" },
   { id: "curso", label: "En curso" },
   { id: "validar", label: "Por validar" },
+  { id: "entregados", label: "Entregados hoy" },
 ];
 
 const isOpen = (o: Order) => o.status === "pendiente" || o.status === "aceptado" || o.status === "en_camino";
@@ -37,6 +39,7 @@ function matches(o: Order, f: Filter) {
     case "nuevos": return o.status === "pendiente";
     case "curso": return o.status === "aceptado" || o.status === "en_camino";
     case "validar": return o.payment_status === "reportado" && o.status === "en_camino";
+    case "entregados": return o.status === "entregado";
     default: return true;
   }
 }
@@ -186,7 +189,21 @@ function Pedidos() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { orders, reload, patch } = useBusinessOrders(business.id, 30);
 
-  const openOrders = useMemo(() => (orders ?? []).filter(isOpen), [orders]);
+  // Cada minuto se revisa si ya pasó la hora de cierre para reiniciar la jornada.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((x) => x + 1), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const dayStart = useMemo(() => {
+    void tick;
+    return businessDayStart(business.opening_hours);
+  }, [business.opening_hours, tick]);
+  const openOrders = useMemo(
+    () => (orders ?? []).filter((o) => isOpen(o) || (o.status === "entregado" && o.delivered_at !== null && new Date(o.delivered_at) >= dayStart)),
+    [orders, dayStart],
+  );
+  const doneToday = useMemo(() => openOrders.filter((o) => o.status === "entregado"), [openOrders]);
   const counts = useMemo(
     () => Object.fromEntries(FILTERS.map((f) => [f.id, openOrders.filter((o) => matches(o, f.id)).length])) as Record<Filter, number>,
     [openOrders],
@@ -201,9 +218,13 @@ function Pedidos() {
       <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h1 className="text-xl font-extrabold md:text-2xl">Mis Pedidos</h1>
         <Link href="/panel/estadisticas" className="text-sm font-bold text-agua-700 underline-offset-2 hover:underline">
-          Entregados y cancelados: ver en Mis Estadísticas →
+          Días anteriores y cancelados: ver en Mis Estadísticas →
         </Link>
       </div>
+      <p className="shrink-0 rounded-2xl bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800">
+        Hoy llevas {doneToday.length} {doneToday.length === 1 ? "pedido entregado" : "pedidos entregados"} · {money(doneToday.reduce((s, o) => s + Number(o.total), 0))}
+        <span className="font-medium text-emerald-700"> (se reinicia a cero al cerrar el negocio)</span>
+      </p>
       <div className="flex shrink-0 flex-wrap gap-2">
         {FILTERS.map((f) => (
           <button
@@ -217,7 +238,7 @@ function Pedidos() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-      {list.length === 0 && <Empty icon={<Inbox className="h-12 w-12 text-slate-300" />} title="No hay pedidos por atender" text="Los pedidos nuevos aparecerán solos, sin recargar. Los entregados y cancelados están en Mis Estadísticas." />}
+      {list.length === 0 && <Empty icon={<Inbox className="h-12 w-12 text-slate-300" />} title="No hay pedidos por atender" text="Los pedidos nuevos aparecerán solos, sin recargar. Los de días anteriores y los cancelados están en Mis Estadísticas." />}
       <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         {list.map((o) => (
           <button key={o.id} className="min-w-0 text-left" onClick={() => setSelectedId(o.id)}>

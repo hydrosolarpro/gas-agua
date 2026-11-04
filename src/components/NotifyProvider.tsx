@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Bell, Bike, CircleDollarSign, Store, Volume2, VolumeX, X } from "lucide-react";
+import { Ban, Bell, Bike, CircleDollarSign, MapPin, Store, Volume2, VolumeX, X } from "lucide-react";
 import { audioReady, playChime, unlockAudio, type ChimeKind } from "@/lib/sound";
 
 export type Notice = { kind: ChimeKind; title: string; body?: string; href?: string };
@@ -19,13 +19,15 @@ const NotifyCtx = createContext<Ctx>({ notify: () => {}, soundOn: true, setSound
 export const useNotify = () => useContext(NotifyCtx);
 
 const STORE_KEY = "avisos_sonido";
-const LIFETIME_MS = 10_000;
+const LIFETIME_MS = 15_000;
 
 const LOOK: Record<ChimeKind, { bg: string; Icon: typeof Bell }> = {
   venta: { bg: "from-emerald-600 to-teal-500", Icon: CircleDollarSign },
   pago: { bg: "from-orange-600 to-amber-500", Icon: CircleDollarSign },
   derivado: { bg: "from-indigo-600 to-sky-500", Icon: Bike },
   demo: { bg: "from-fuchsia-600 to-orange-500", Icon: Store },
+  llegada: { bg: "from-emerald-600 to-green-500", Icon: MapPin },
+  cancelado: { bg: "from-rose-600 to-red-500", Icon: Ban },
 };
 
 /** Avisos al estilo «venta realizada»: tarjeta que entra desde arriba, sonido, vibración y notificación del navegador. */
@@ -65,7 +67,7 @@ export function NotifyProvider({ children }: { children: ReactNode }) {
       setToasts((t) => [{ ...n, id, silent }, ...t].slice(0, 4));
       setTimeout(() => dismiss(id), LIFETIME_MS);
       try {
-        if (navigator.userActivation?.hasBeenActive) navigator.vibrate?.([200, 100, 200]);
+        if (navigator.userActivation?.hasBeenActive) navigator.vibrate?.([400, 150, 400, 150, 700]);
         if (document.hidden && "Notification" in window && Notification.permission === "granted") {
           new Notification(n.title, { body: n.body });
         }
@@ -90,18 +92,18 @@ export function NotifyProvider({ children }: { children: ReactNode }) {
           const { bg, Icon } = LOOK[t.kind];
           const inner = (
             <>
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
-                <Icon className="h-6 w-6" />
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/25">
+                <Icon className="h-7 w-7" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-extrabold leading-tight">{t.title}</span>
-                {t.body && <span className="line-clamp-2 text-sm opacity-95">{t.body}</span>}
+                <span className="block text-lg font-extrabold leading-tight">{t.title}</span>
+                {t.body && <span className="line-clamp-3 text-sm font-medium opacity-95">{t.body}</span>}
                 {t.silent && <span className="mt-0.5 block text-[11px] opacity-80">Toca la pantalla una vez para activar el sonido</span>}
               </span>
             </>
           );
           return (
-            <div key={t.id} role="status" className={`toast-in pointer-events-auto flex items-center gap-3 rounded-2xl bg-gradient-to-r ${bg} p-3 text-white shadow-2xl ring-1 ring-black/5`}>
+            <div key={t.id} role="status" className={`toast-in pointer-events-auto flex items-center gap-3 rounded-2xl bg-gradient-to-r ${bg} p-4 text-white shadow-2xl ring-1 ring-black/5`}>
               {t.href ? (
                 <Link href={t.href} onClick={() => dismiss(t.id)} className="flex min-w-0 flex-1 items-center gap-3">
                   {inner}

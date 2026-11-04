@@ -1,5 +1,6 @@
 "use client";
 
+import { Ban } from "lucide-react";
 import { Bike, MapPin, Search } from "@/components/icons";
 import { BusinessLogo } from "@/components/BusinessBadge";
 
@@ -224,10 +225,13 @@ export default function SeguimientoPage() {
         </section>
 
         <ErrorText>{error}</ErrorText>
-        {order.status === "pendiente" && (
-          <button onClick={cancel} className="btn-outline w-full text-rose-600">
-            Cancelar pedido
-          </button>
+        {["pendiente", "aceptado", "en_camino"].includes(order.status) && !order.arrived_at && ["pendiente", "rechazado"].includes(order.payment_status) && (
+          <div className="space-y-1.5">
+            <button onClick={cancel} className="cta cta-danger">
+              <Ban className="h-6 w-6" /> Cancelar mi pedido
+            </button>
+            <p className="text-center text-xs text-slate-500">Avisamos al instante al negocio y a tu repartidor. Puedes cancelar hasta que tu repartidor llegue.</p>
+          </div>
         )}
             </div>
           </div>
