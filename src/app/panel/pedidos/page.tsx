@@ -3,6 +3,7 @@
 import { OrderProofsOwner } from "@/components/OrderProofs";
 import { Bike, CircleCheck, CircleX, Hand, Inbox, MapPin, StickyNote } from "@/components/icons";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 import { MessageCircle, Phone } from "lucide-react";
@@ -19,23 +20,23 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Order } from "@/lib/types";
 import { usePanel } from "@/components/panel-context";
 
-type Filter = "todos" | "nuevos" | "curso" | "validar" | "entregados" | "cancelados";
+// Mis Pedidos es la bandeja de trabajo: solo pedidos abiertos. Al entregarse o cancelarse pasan a Mis Estadísticas,
+// donde se consultan, filtran y descargan por día, mes o año.
+type Filter = "todos" | "nuevos" | "curso" | "validar";
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "todos", label: "Todos" },
   { id: "nuevos", label: "Nuevos" },
   { id: "curso", label: "En curso" },
   { id: "validar", label: "Por validar" },
-  { id: "entregados", label: "Entregados" },
-  { id: "cancelados", label: "Cancelados" },
 ];
+
+const isOpen = (o: Order) => o.status === "pendiente" || o.status === "aceptado" || o.status === "en_camino";
 
 function matches(o: Order, f: Filter) {
   switch (f) {
     case "nuevos": return o.status === "pendiente";
     case "curso": return o.status === "aceptado" || o.status === "en_camino";
-    case "validar": return o.payment_status === "reportado" && (o.status === "en_camino" || o.status === "entregado");
-    case "entregados": return o.status === "entregado";
-    case "cancelados": return o.status === "cancelado";
+    case "validar": return o.payment_status === "reportado" && o.status === "en_camino";
     default: return true;
   }
 }
@@ -185,18 +186,24 @@ function Pedidos() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { orders, reload, patch } = useBusinessOrders(business.id, 30);
 
+  const openOrders = useMemo(() => (orders ?? []).filter(isOpen), [orders]);
   const counts = useMemo(
-    () => Object.fromEntries(FILTERS.map((f) => [f.id, (orders ?? []).filter((o) => matches(o, f.id)).length])) as Record<Filter, number>,
-    [orders],
+    () => Object.fromEntries(FILTERS.map((f) => [f.id, openOrders.filter((o) => matches(o, f.id)).length])) as Record<Filter, number>,
+    [openOrders],
   );
 
   if (!orders) return <FullLoader />;
-  const list = orders.filter((o) => matches(o, filter));
+  const list = openOrders.filter((o) => matches(o, filter));
   const selected = orders.find((o) => o.id === selectedId) ?? null;
 
   return (
     <main className="mx-auto flex h-full max-w-6xl flex-col gap-3 p-3 md:p-5">
-      <h1 className="shrink-0 text-xl font-extrabold md:text-2xl">Mis Pedidos</h1>
+      <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h1 className="text-xl font-extrabold md:text-2xl">Mis Pedidos</h1>
+        <Link href="/panel/estadisticas" className="text-sm font-bold text-agua-700 underline-offset-2 hover:underline">
+          Entregados y cancelados: ver en Mis Estadísticas →
+        </Link>
+      </div>
       <div className="flex shrink-0 flex-wrap gap-2">
         {FILTERS.map((f) => (
           <button
@@ -210,7 +217,7 @@ function Pedidos() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-      {list.length === 0 && <Empty icon={<Inbox className="h-12 w-12 text-slate-300" />} title="No hay pedidos aquí" text="Los pedidos nuevos aparecerán solos, sin recargar." />}
+      {list.length === 0 && <Empty icon={<Inbox className="h-12 w-12 text-slate-300" />} title="No hay pedidos por atender" text="Los pedidos nuevos aparecerán solos, sin recargar. Los entregados y cancelados están en Mis Estadísticas." />}
       <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         {list.map((o) => (
           <button key={o.id} className="min-w-0 text-left" onClick={() => setSelectedId(o.id)}>
