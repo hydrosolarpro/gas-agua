@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Calculator, Download, FileSpreadsheet, FileText } from "lucide-react";
 import type { Order } from "@/lib/types";
 import { usePanel } from "@/components/panel-context";
 import { useDrivers } from "@/components/useBusinessOrders";
@@ -287,6 +287,18 @@ export default function Estadisticas() {
     setPdfBusy(false);
   }
 
+  const [recalcBusy, setRecalcBusy] = useState(false);
+  /** Vuelve a calcular pago a repartidores y ganancias de los pedidos entregados con la forma de pago y los costos actuales. */
+  async function recalc() {
+    if (!confirm("¿Recalcular las cuentas? Se vuelve a calcular el pago a repartidores y las ganancias bruta y neta de TODOS los pedidos entregados, con la forma de pago y los costos que tienes hoy.")) return;
+    setRecalcBusy(true);
+    setError("");
+    const { error: e } = await supabaseBrowser().rpc("owner_recalc_accounts", { p_all: true });
+    setRecalcBusy(false);
+    if (e) return setError(e.message);
+    await load();
+  }
+
   /** Descarga todos los pedidos del período en CSV (se abre en Excel). */
   function csv() {
     if (!report) return;
@@ -363,6 +375,9 @@ export default function Estadisticas() {
           </button>
           <button onClick={csv} disabled={!report} className="btn-outline col-span-2 !py-2.5 text-sm lg:col-span-1">
             <FileSpreadsheet className="h-4 w-4" /> Pedidos en Excel (CSV)
+          </button>
+          <button onClick={recalc} disabled={recalcBusy} className="btn-outline col-span-2 !py-2.5 text-sm lg:col-span-1">
+            {recalcBusy ? <Spinner className="h-4 w-4" /> : <Calculator className="h-4 w-4" />} Recalcular cuentas
           </button>
         </div>
         <p className="hidden text-xs text-slate-500 lg:block">

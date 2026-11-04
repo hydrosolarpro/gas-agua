@@ -42,6 +42,8 @@ export function checkPay(type: unknown, value: unknown): { ok: true; type: PayTy
 /** «todos los productos» o «solo Balón de gas 10 kg, Bidón…», según los productos elegidos (null o vacío = todos). */
 export function payScope(ids: string[] | null | undefined, names: Record<string, string>): string {
   if (!ids || ids.length === 0) return "todos los productos";
+  const all = Object.keys(names);
+  if (all.length > 0 && all.every((id) => ids.includes(id))) return "todos los productos";
   const list = ids.map((id) => names[id]).filter(Boolean);
   return list.length ? `solo ${list.join(", ")}` : "productos elegidos";
 }
