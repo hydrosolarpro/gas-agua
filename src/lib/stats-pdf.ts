@@ -21,6 +21,18 @@ export type CustomerStat = {
   spent: number;
 };
 export type DeliveryRow = TraceInput & { code: string; customer: string; driver: string; total: number; gross?: number | null; net?: number | null; pay?: number | null; km?: number | null };
+/** Un pedido del período, en cualquier estado (el registro completo de pedidos). */
+export type OrderListRow = {
+  code: string;
+  created_at: string;
+  customer: string;
+  phone: string;
+  status: string;
+  payment: string;
+  items: string;
+  driver: string;
+  total: number;
+};
 /** Pago acumulado de un repartidor en el período. */
 export type PayRow = { driver: string; scheme: string; deliveries: number; total: number; amount: number; pending: number };
 /** Ganancias de un día (suma de los pedidos entregados ese día). */
@@ -39,6 +51,7 @@ export async function downloadStatsPdf(opts: {
   deliveries: DeliveryRow[];
   payRows?: PayRow[];
   dayRows?: DayRow[];
+  orders?: OrderListRow[];
 }) {
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
@@ -86,6 +99,22 @@ export async function downloadStatsPdf(opts: {
     styles: { fontSize: 8.5, cellPadding: 4 },
     margin: { left: 40, right: 40 },
   });
+
+  if (opts.orders) {
+    const y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+    doc.setFont("helvetica", "bold").setFontSize(13).text(`Pedidos del período (${opts.orders.length})`, 40, y + 28);
+    autoTable(doc, {
+      startY: y + 36,
+      head: [["Pedido", "Fecha", "Cliente", "Celular", "Productos", "Estado", "Pago", "Repartidor", "Total"]],
+      body: opts.orders.length
+        ? opts.orders.map((o) => [`#${o.code}`, fmtDateTime(o.created_at), o.customer, o.phone, o.items, o.status, o.payment, o.driver, sol(o.total)])
+        : [["Sin pedidos en este período", "", "", "", "", "", "", "", ""]],
+      theme: "striped",
+      headStyles: { fillColor: [8, 145, 178] },
+      styles: { fontSize: 7.5, cellPadding: 3 },
+      margin: { left: 40, right: 40 },
+    });
+  }
 
   const afterCancelled0 = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
   doc.setFont("helvetica", "bold").setFontSize(13).text(`Entregas realizadas y sus tiempos (${opts.deliveries.length})`, 40, afterCancelled0 + 28);

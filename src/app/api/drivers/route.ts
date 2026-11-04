@@ -18,7 +18,7 @@ async function ownerBusiness() {
 export async function POST(request: Request) {
   const guard = await ownerBusiness();
   if (guard.error) return guard.error;
-  const { fullName, phone, payType, payValue } = (await request.json().catch(() => ({}))) as { fullName?: string; phone?: string; payType?: string; payValue?: number | string };
+  const { fullName, phone, payType, payValue, payProducts } = (await request.json().catch(() => ({}))) as { fullName?: string; phone?: string; payType?: string; payValue?: number | string; payProducts?: string[] };
 
   const name = fullName?.trim() ?? "";
   if (name.length < 2) return NextResponse.json({ error: "Escribe el nombre del repartidor" }, { status: 400 });
@@ -33,9 +33,17 @@ export async function POST(request: Request) {
     if (!c.ok) return NextResponse.json({ error: c.error }, { status: 400 });
     pay = { type: c.type, value: c.value };
   }
-  const payCols = pay ? { pay_type: pay.type, pay_value: pay.value } : {};
-
   const db = supabaseAdmin();
+  // Productos sobre los que se calcula el pago: deben ser de este negocio. Vacío = todos.
+  let products: string[] | null = null;
+  if (pay && Array.isArray(payProducts) && payProducts.length > 0) {
+    const ids = [...new Set(payProducts.filter((x) => typeof x === "string"))];
+    const { count } = await db.from("products").select("id", { count: "exact", head: true }).eq("business_id", guard.businessId).in("id", ids);
+    if ((count ?? 0) !== ids.length) return NextResponse.json({ error: "Hay productos que no son de tu negocio" }, { status: 400 });
+    products = ids;
+  }
+  const payCols = pay ? { pay_type: pay.type, pay_value: pay.value, ...(products ? { pay_products: products } : {}) } : {};
+
   const { data: existing } = await db.from("profiles").select("id, role, is_admin").eq("phone", phone).maybeSingle();
 
   if (!existing) {

@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { KeyRound, MessageCircle, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { Bike, Phone } from "@/components/icons";
 import { PhoneInput } from "@/components/PinInput";
 import { usePanel } from "@/components/panel-context";
 import { Empty, ErrorText, Sheet, Spinner } from "@/components/ui";
 import { useDrivers, type Driver } from "@/components/useBusinessOrders";
-import { PayPicker } from "@/components/PayPicker";
+import { PayPicker, type PayProduct } from "@/components/PayPicker";
 import { dateTime, waLink } from "@/lib/format";
-import { checkPay, payLabel, type PayType } from "@/lib/pay";
+import { checkPay, payLabel, payScope, type PayType } from "@/lib/pay";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 async function api(method: string, body: Record<string, unknown>) {
@@ -27,6 +27,21 @@ export default function RepartidoresPage() {
   const [payType, setPayType] = useState<PayType | "">("");
   const [payValue, setPayValue] = useState("");
   const [editing, setEditing] = useState<Driver | null>(null);
+  const [payProducts, setPayProducts] = useState<string[]>([]);
+  const [products, setProducts] = useState<PayProduct[]>([]);
+
+  // Productos de «Mis productos»: sobre ellos se puede aplicar el pago de cada repartidor.
+  useEffect(() => {
+    supabaseBrowser()
+      .from("products")
+      .select("id, name, price")
+      .eq("business_id", business.id)
+      .order("sort_order")
+      .order("created_at")
+      .returns<PayProduct[]>()
+      .then(({ data }) => setProducts(data ?? []));
+  }, [business.id]);
+  const productNames = Object.fromEntries(products.map((p) => [p.id, p.name]));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -37,7 +52,7 @@ export default function RepartidoresPage() {
     if (!c.ok) return setError(c.error);
     setSaving(true);
     setError("");
-    const { ok, data } = await api("POST", { fullName: name, phone, payType: c.type, payValue: c.value });
+    const { ok, data } = await api("POST", { fullName: name, phone, payType: c.type, payValue: c.value, payProducts });
     setSaving(false);
     if (!ok) return setError(data.error ?? "No se pudo agregar");
     setOpen(false);
@@ -50,6 +65,7 @@ export default function RepartidoresPage() {
     setPhone("");
     setPayType("");
     setPayValue("");
+    setPayProducts([]);
     reload();
   }
 
@@ -59,7 +75,7 @@ export default function RepartidoresPage() {
     if (!c.ok) return setError(c.error);
     setSaving(true);
     setError("");
-    const { data, error } = await supabaseBrowser().rpc("set_driver_pay", { p_user_id: editing.user_id, p_type: c.type, p_value: c.value });
+    const { data, error } = await supabaseBrowser().rpc("set_driver_pay", { p_user_id: editing.user_id, p_type: c.type, p_value: c.value, p_products: payProducts.length ? payProducts : null });
     setSaving(false);
     if (error) return setError(error.message);
     setNotice(
@@ -74,6 +90,7 @@ export default function RepartidoresPage() {
     setError("");
     setPayType(d.pay_type ?? "");
     setPayValue(d.pay_value === null || d.pay_value === undefined ? "" : String(Number(d.pay_value)));
+    setPayProducts(d.pay_products ?? []);
     setEditing(d);
   }
 
@@ -121,6 +138,7 @@ export default function RepartidoresPage() {
             setError("");
             setPayType("");
             setPayValue("");
+            setPayProducts([]);
             setOpen(true);
           }}
           className="btn-primary px-4 py-2.5 text-sm"
@@ -192,6 +210,7 @@ export default function RepartidoresPage() {
                 <span className="min-w-0 flex-1">
                   <span className="block text-xs font-semibold text-slate-500">Cómo le pagas</span>
                   <span className={`block font-bold ${d.pay_type ? "text-agua-800" : "text-amber-800"}`}>{d.pay_type ? payLabel(d.pay_type, d.pay_value) : "Definir pago"}</span>
+                  {d.pay_type && <span className="block text-xs font-semibold text-slate-500">Sobre {payScope(d.pay_products, productNames)}</span>}
                 </span>
                 <Pencil className="h-4 w-4 shrink-0 text-slate-400" />
               </button>
@@ -243,7 +262,7 @@ export default function RepartidoresPage() {
           </div>
           <div>
             <p className="label">¿Cómo le vas a pagar por cada pedido entregado?</p>
-            <PayPicker type={payType} value={payValue} onType={setPayType} onValue={setPayValue} />
+            <PayPicker type={payType} value={payValue} onType={setPayType} onValue={setPayValue} products={products} selected={payProducts} onSelected={setPayProducts} />
           </div>
           <p className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
             No necesitas darle un PIN: lo crea él al entrar por primera vez. Si ese celular ya tiene cuenta, le llegará una invitación que debe aceptar.
@@ -257,7 +276,7 @@ export default function RepartidoresPage() {
 
       <Sheet open={Boolean(editing)} onClose={() => setEditing(null)} title={`Pago de ${editing?.profiles.full_name ?? ""}`}>
         <div className="space-y-4">
-          <PayPicker type={payType} value={payValue} onType={setPayType} onValue={setPayValue} />
+          <PayPicker type={payType} value={payValue} onType={setPayType} onValue={setPayValue} products={products} selected={payProducts} onSelected={setPayProducts} />
           <p className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
             Se aplica a los próximos pedidos y también a los que ya entregó y todavía no tenían pago asignado. Los pedidos que ya tienen pago no cambian.
           </p>

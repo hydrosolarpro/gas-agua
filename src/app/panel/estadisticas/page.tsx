@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, FileText } from "lucide-react";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import type { Order } from "@/lib/types";
 import { usePanel } from "@/components/panel-context";
 import { useDrivers } from "@/components/useBusinessOrders";
 import { Empty, ErrorText, Spinner } from "@/components/ui";
-import { dateTime, money } from "@/lib/format";
+import { dateTime, METHOD, money, PAY_STATUS, STATUS } from "@/lib/format";
 import { dayRows as buildDays, payRows as buildPays, round2, type Earn } from "@/lib/earnings";
 import { FINANCE_COLS, orderFinance, orderPay } from "@/lib/finance";
-import { payLabel } from "@/lib/pay";
+import { payLabel, payScope } from "@/lib/pay";
 import { fmtDay, limaDate } from "@/lib/plan";
 import { RANGE_MODES, rangeBounds, resolveRange, type Range, type RangeMode } from "@/lib/stats";
-import { downloadStatsPdf, type CancelledRow, type CustomerStat, type DayRow, type DeliveryRow, type PayRow, type Summary } from "@/lib/stats-pdf";
+import { downloadStatsPdf, type CancelledRow, type CustomerStat, type DayRow, type DeliveryRow, type OrderListRow, type PayRow, type Summary } from "@/lib/stats-pdf";
 import { clock, etaVerdict, fmtMin, minutesBetween, traceTimes } from "@/lib/trace";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -26,6 +26,13 @@ type OrderRow = {
   customer_name: string;
   customer_phone: string | null;
   created_at: string;
+};
+// Todos los pedidos del período, con lo necesario para listarlos y descargarlos.
+type ListedOrder = OrderRow & {
+  payment_method: Order["payment_method"];
+  address_text: string;
+  driver: { full_name: string } | null;
+  order_items: { name: string; quantity: number }[] | null;
 };
 type CancelledOrder = OrderRow & {
   cancelled_at: string | null;
@@ -51,7 +58,7 @@ type DeliveredOrder = {
   driver: { full_name: string } | null;
 } & Pick<Order, "order_finance" | "order_driver_pay">;
 
-type Report = { range: Range; summary: Summary; cancelled: CancelledRow[]; customers: CustomerStat[]; deliveries: DeliveryRow[]; days: DayRow[]; pays: PayRow[] };
+type Report = { range: Range; summary: Summary; cancelled: CancelledRow[]; customers: CustomerStat[]; deliveries: DeliveryRow[]; days: DayRow[]; pays: PayRow[]; orders: OrderListRow[] };
 
 /** Trae todas las filas de una consulta paginando de a 1000 (límite del servidor). */
 async function all<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
@@ -72,7 +79,7 @@ export default function Estadisticas() {
   const [a, setA] = useState(today.slice(0, 7));
   const [b, setB] = useState(today.slice(0, 7));
   const [report, setReport] = useState<Report | null>(null);
-  const [rtab, setRtab] = useState<"entregas" | "ganancias" | "pagos" | "cancelados" | "clientes">("entregas");
+  const [rtab, setRtab] = useState<"pedidos" | "entregas" | "ganancias" | "pagos" | "cancelados" | "clientes">("pedidos");
   const [loading, setLoading] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [error, setError] = useState("");
@@ -101,16 +108,16 @@ export default function Estadisticas() {
       const db = supabaseBrowser();
       const { since, until } = rangeBounds(r);
       const [orders, cancelledOrders, links, deliveredOrders] = await Promise.all([
-        all<OrderRow>((f, t) =>
+        all<ListedOrder>((f, t) =>
           db
             .from("orders")
-            .select("id, code, status, total, payment_status, customer_id, customer_name, customer_phone, created_at")
+            .select("id, code, status, total, payment_status, payment_method, address_text, customer_id, customer_name, customer_phone, created_at, driver:profiles!orders_driver_id_fkey(full_name), order_items(name, quantity)")
             .eq("business_id", business.id)
             .gte("created_at", since)
             .lt("created_at", until)
             .order("created_at", { ascending: false })
             .range(f, t)
-            .returns<OrderRow[]>(),
+            .returns<ListedOrder[]>(),
         ),
         all<CancelledOrder>((f, t) =>
           db
@@ -151,6 +158,9 @@ export default function Estadisticas() {
         }),
       ]);
 
+      // Nombres de los productos sobre los que se aplica el pago de cada repartidor (se leen al consultar, para no depender de otra carga).
+      const { data: prods } = await db.from("products").select("id, name").eq("business_id", business.id).returns<{ id: string; name: string }[]>();
+      const productNames = Object.fromEntries((prods ?? []).map((p) => [p.id, p.name]));
       const earns: Earn[] = deliveredOrders.map((o) => {
         const f = orderFinance(o);
         const p = orderPay(o);
@@ -160,12 +170,24 @@ export default function Estadisticas() {
           total: Number(o.total),
           driverKey: o.driver_id ?? "-",
           driverName: o.driver?.full_name ?? "—",
-          scheme: payLabel(d?.pay_type, d?.pay_value),
+          scheme: d?.pay_type ? `${payLabel(d.pay_type, d.pay_value)} · sobre ${payScope(d.pay_products, productNames)}` : payLabel(d?.pay_type, d?.pay_value),
           gross: f?.gross_profit == null ? null : Number(f.gross_profit),
           net: f?.net_profit == null ? null : Number(f.net_profit),
           pay: p?.amount == null ? null : Number(p.amount),
         };
       });
+      // Registro completo de pedidos del período: lo que se ve en «Mis Pedidos», guardado para consultarlo con cualquier filtro.
+      const orderList: OrderListRow[] = orders.map((o) => ({
+        code: o.code,
+        created_at: o.created_at,
+        customer: o.customer_name || "Cliente",
+        phone: o.customer_phone ?? "—",
+        status: STATUS[o.status as keyof typeof STATUS]?.label ?? o.status,
+        payment: `${METHOD[o.payment_method]?.label ?? o.payment_method} · ${PAY_STATUS[o.payment_status as keyof typeof PAY_STATUS]?.label ?? o.payment_status}`,
+        items: (o.order_items ?? []).map((i) => `${i.quantity}× ${i.name}`).join(", ") || "—",
+        driver: o.driver?.full_name ?? "—",
+        total: Number(o.total),
+      }));
       const days = buildDays(earns);
       const pays = buildPays(earns);
       const withCost = earns.filter((e) => e.gross !== null);
@@ -243,7 +265,7 @@ export default function Estadisticas() {
         net: withCost.length ? round2(withCost.reduce((a, e) => a + (e.net ?? 0), 0)) : null,
         driverPay: round2(earns.reduce((a, e) => a + (e.pay ?? 0), 0)),
       };
-      setReport({ range: r, summary, cancelled, customers, deliveries, days, pays });
+      setReport({ range: r, summary, cancelled, customers, deliveries, days, pays, orders: orderList });
     } catch (e) {
       setError((e as Error).message || "No se pudieron cargar las estadísticas");
     }
@@ -258,11 +280,27 @@ export default function Estadisticas() {
     if (!report) return;
     setPdfBusy(true);
     try {
-      await downloadStatsPdf({ business: business.name, rangeLabel: report.range.label, summary: report.summary, cancelled: report.cancelled, customers: report.customers, deliveries: report.deliveries, payRows: report.pays, dayRows: report.days });
+      await downloadStatsPdf({ business: business.name, rangeLabel: report.range.label, summary: report.summary, cancelled: report.cancelled, customers: report.customers, deliveries: report.deliveries, payRows: report.pays, dayRows: report.days, orders: report.orders });
     } catch {
       setError("No se pudo generar el PDF");
     }
     setPdfBusy(false);
+  }
+
+  /** Descarga todos los pedidos del período en CSV (se abre en Excel). */
+  function csv() {
+    if (!report) return;
+    const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+    const rows = [
+      ["Pedido", "Fecha", "Cliente", "Celular", "Productos", "Estado", "Pago", "Repartidor", "Total (S/)"],
+      ...report.orders.map((o) => [`#${o.code}`, dateTime(o.created_at), o.customer, o.phone, o.items, o.status, o.payment, o.driver, o.total.toFixed(2)]),
+    ];
+    const blob = new Blob(["\uFEFF" + rows.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `pedidos-${report.range.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "periodo"}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 
   const two = mode === "rango_dias" || mode === "rango_meses" || mode === "rango_anios";
@@ -323,9 +361,12 @@ export default function Estadisticas() {
           <button onClick={pdf} disabled={!report || pdfBusy} className="btn-outline !py-2.5 text-sm">
             {pdfBusy ? <Spinner className="h-4 w-4" /> : <Download className="h-4 w-4" />} Descargar PDF
           </button>
+          <button onClick={csv} disabled={!report} className="btn-outline col-span-2 !py-2.5 text-sm lg:col-span-1">
+            <FileSpreadsheet className="h-4 w-4" /> Pedidos en Excel (CSV)
+          </button>
         </div>
         <p className="hidden text-xs text-slate-500 lg:block">
-          Aquí quedan guardados todos tus pedidos cancelados y los datos de tus clientes. Elige un período para verlos y descargarlos en PDF.
+          Aquí quedan guardados todos tus pedidos, cancelados y clientes. Elige un período para verlos y descargarlos en PDF o Excel.
         </p>
       </section>
 
@@ -357,6 +398,7 @@ export default function Estadisticas() {
 
             <div className="flex shrink-0 flex-wrap gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
               {[
+                { id: "pedidos" as const, label: `Pedidos (${report.orders.length})` },
                 { id: "entregas" as const, label: `Entregas (${report.deliveries.length})` },
                 { id: "ganancias" as const, label: "Ganancias" },
                 { id: "pagos" as const, label: "Pagos" },
@@ -376,6 +418,25 @@ export default function Estadisticas() {
             </div>
 
             <div className="min-h-[18rem] flex-1 space-y-2 lg:min-h-0 lg:overflow-y-auto">
+              {rtab === "pedidos" && report.orders.length === 0 && <Empty icon={<FileText className="h-10 w-10 text-slate-300" />} title="Sin pedidos en este período" />}
+              {rtab === "pedidos" &&
+                report.orders.map((o) => (
+                  <article key={o.code + o.created_at} className="card space-y-1.5 p-3">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="min-w-0 truncate font-bold">
+                        #{o.code} · {o.customer}
+                      </p>
+                      <p className="shrink-0 font-extrabold text-agua-700">{money(o.total)}</p>
+                    </div>
+                    <p className="text-sm text-slate-600">{o.items}</p>
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                      <span className="chip bg-slate-100 text-slate-700">{o.status}</span>
+                      <span>{o.payment}</span>
+                      <span>· {dateTime(o.created_at)}</span>
+                      {o.driver !== "—" && <span>· Repartidor: {o.driver}</span>}
+                    </p>
+                  </article>
+                ))}
               {rtab === "entregas" && report.deliveries.length === 0 && <Empty icon={<FileText className="h-10 w-10 text-slate-300" />} title="Sin entregas en este período" />}
               {rtab === "entregas" &&
                 report.deliveries.map((d) => {
