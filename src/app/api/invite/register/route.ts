@@ -3,7 +3,8 @@ import { hashToken } from "@/lib/admin";
 import { authenticateExisting, createPinUser, isWeakPin, PHONE_RE, PIN_RE, pinEmail, pinPassword, WEAK_PIN_MESSAGE } from "@/lib/pin";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
 
-// Alta de un dueño de negocio a partir de una invitación. Es la ÚNICA forma de crear un negocio.
+// Alta de un dueño de negocio: con invitación del administrador o por registro abierto (sin token, con tope por hora).
+const MAX_OPEN_SIGNUPS_PER_HOUR = 20;
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     token?: string;
@@ -15,11 +16,12 @@ export async function POST(request: Request) {
     plin?: string;
   };
   const token = body.token ?? "";
+  const open = !body.token;
   const name = body.fullName?.trim() ?? "";
   const businessName = body.businessName?.trim() ?? "";
   const clean = (v?: string) => (v && PHONE_RE.test(v) ? v : null);
 
-  if (!/^[a-f0-9]{64}$/.test(token)) return NextResponse.json({ error: "Invitación no válida" }, { status: 400 });
+  if (!open && !/^[a-f0-9]{64}$/.test(token)) return NextResponse.json({ error: "Invitación no válida" }, { status: 400 });
   if (name.length < 2) return NextResponse.json({ error: "Escribe tu nombre" }, { status: 400 });
   if (businessName.length < 2) return NextResponse.json({ error: "Escribe el nombre de tu negocio" }, { status: 400 });
   if (!body.phone || !PHONE_RE.test(body.phone)) {
@@ -39,8 +41,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: WEAK_PIN_MESSAGE }, { status: 400 });
   }
 
-  // 1) Reclamar la invitación de forma atómica: solo una persona puede usarla.
-  const { data: claimed } = await db
+  if (open) {
+    const since = new Date(Date.now() - 3600_000).toISOString();
+    const { count } = await db.from("businesses").select("id", { count: "exact", head: true }).gte("created_at", since);
+    if ((count ?? 0) >= MAX_OPEN_SIGNUPS_PER_HOUR) {
+      return NextResponse.json({ error: "Hay muchos registros ahora. Inténtalo en unos minutos." }, { status: 429 });
+    }
+  }
+
+  // 1) Reclamar la invitación de forma atómica: solo una persona puede usarla (el registro abierto no usa invitación).
+  const { data: claimed } = open
+    ? { data: null as { id: string } | null }
+    : await db
     .from("invitations")
     .update({ used_at: new Date().toISOString() })
     .eq("token_hash", hashToken(token))
@@ -49,9 +61,11 @@ export async function POST(request: Request) {
     .gt("expires_at", new Date().toISOString())
     .select("id")
     .maybeSingle();
-  if (!claimed) return NextResponse.json({ error: "Esta invitación ya fue usada o venció. Pide una nueva." }, { status: 410 });
+  if (!open && !claimed) return NextResponse.json({ error: "Esta invitación ya fue usada o venció. Pide una nueva." }, { status: 410 });
 
-  const release = () => db.from("invitations").update({ used_at: null, used_by: null }).eq("id", claimed.id);
+  const release = async () => {
+    if (claimed) await db.from("invitations").update({ used_at: null, used_by: null }).eq("id", claimed.id);
+  };
 
   // 2) Crear la cuenta (celular + PIN) y 3) el negocio.
   let userId: string;
@@ -81,7 +95,7 @@ export async function POST(request: Request) {
       { status: yaTiene ? 409 : 500 },
     );
   }
-  await db.from("invitations").update({ used_by: userId }).eq("id", claimed.id);
+  if (claimed) await db.from("invitations").update({ used_by: userId }).eq("id", claimed.id);
 
   // 4) Iniciar sesión.
   const supabase = await supabaseServer();
